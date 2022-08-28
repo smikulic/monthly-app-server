@@ -1,50 +1,46 @@
 const { prisma } = require("./database.js");
 
-const Student = {
+const User = {
   id: (parent, args, context, info) => parent.id,
   email: (parent) => parent.email,
-  fullName: (parent) => parent.fullName,
-  dept: (parent) => parent.dept,
-  enrolled: (parent) => parent.enrolled,
 };
 
 const Query = {
-  enrollment: (parent, args) => {
-    return prisma.student.findMany({
-      where: { enrolled: true },
-    });
+  // enrollment: (parent, args) => {
+  //   return prisma.student.findMany({
+  //     where: { enrolled: true },
+  //   });
+  // },
+  categories: (parent, args) => {
+    return prisma.category.findMany({});
   },
-  students: (parent, args) => {
-    return prisma.student.findMany({});
-  },
-  student: (parent, args) => {
-    return prisma.student.findFirst({
-      where: { id: Number(args.id) },
+  user: (parent, args) => {
+    return prisma.user.findFirst({
+      where: { id: args.id },
     });
   },
 };
 
 const Mutation = {
-  registerStudent: (parent, args) => {
-    return prisma.student.create({
+  createUser: (parent, args) => {
+    return prisma.user.create({
       data: {
         email: args.email,
-        fullName: args.fullName,
-        dept: args.dept,
+        password: args.password,
       },
     });
   },
-  enroll: (parent, args) => {
-    return prisma.student.update({
-      where: { id: Number(args.id) },
-      data: {
-        enrolled: true,
-      },
-    });
-  },
+  // enroll: (parent, args) => {
+  //   return prisma.student.update({
+  //     where: { id: Number(args.id) },
+  //     data: {
+  //       enrolled: true,
+  //     },
+  //   });
+  // },
 };
 
-const resolvers = { Student, Query, Mutation };
+const resolvers = { User, Query, Mutation };
 
 module.exports = {
   resolvers,

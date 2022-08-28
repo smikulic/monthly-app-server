@@ -10,10 +10,41 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Student {
-  id       Int     @id @default(autoincrement())
-  email    String
-  fullName String
-  dept     String?
-  enrolled Boolean @default(false)
+model User {
+  id              String      @id @default(uuid())
+  email           String      @unique
+  password        String
+  emailConfirmed  Boolean     @default(false)
+  currency        String?
+  categories      Category[]
+  expenses        Expense[]
+}
+
+model Category {
+  id            String      @id @default(uuid())
+  name          String
+  icon          String
+  subcategories Subcategory[]
+  user          User        @relation(fields: [userId], references: [id])
+  userId        String      @unique
+}
+
+model Subcategory {
+  id            String      @id @default(uuid())
+  name          String
+  icon          String
+  budgetAmount  Int
+  category      Category    @relation(fields: [categoryId], references: [id])
+  categoryId    String      @unique
+  expenses      Expense[]
+}
+
+model Expense {
+  id            String     @id @default(uuid())
+  date          DateTime
+  amount        Int
+  user          User        @relation(fields: [userId], references: [id])
+  userId        String      @unique
+  subcategory   Subcategory @relation(fields: [subcategoryId], references: [id])
+  subcategoryId String      @unique
 }
