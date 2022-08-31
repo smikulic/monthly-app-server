@@ -52,6 +52,7 @@ const Mutation = {
     const user = context.prisma.user.create({
       data: { ...args, password },
     });
+
     const token = jwt.sign({ userId: user.id }, APP_SECRET);
 
     return {
