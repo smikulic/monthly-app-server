@@ -2,9 +2,9 @@
   "name": "node-graphql",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "start.js",
   "scripts": {
-    "start": "nodemon ./src/index.js"
+    "start": "nodemon ./start.js"
   },
   "keywords": [],
   "author": "",
@@ -13,6 +13,7 @@
     "@prisma/client": "^4.2.1",
     "apollo-server": "^3.10.2",
     "bcryptjs": "^2.4.3",
+    "esm": "^3.2.25",
     "graphql": "^16.6.0",
     "jsonwebtoken": "^8.5.1"
   },

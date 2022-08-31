@@ -1,7 +1,6 @@
-const { prisma } = require("./database.js");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-const { APP_SECRET } = require("./auth");
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
+import { APP_SECRET } from "./auth";
 
 const User = {
   id: (parent, args, context, info) => parent.id,
@@ -14,32 +13,31 @@ const Query = {
   //     where: { enrolled: true },
   //   });
   // },
-  categories: (parent, args) => {
-    return prisma.category.findMany({});
+  categories: (parent, args, context) => {
+    return context.prisma.category.findMany({});
   },
-  users: (parent, args) => {
-    return prisma.user.findMany({});
+  users: (parent, args, context) => {
+    return context.prisma.user.findMany({});
   },
-  user: (parent, args) => {
-    return prisma.user.findFirst({
+  user: (parent, args, context) => {
+    return context.prisma.user.findFirst({
       where: { id: args.id },
     });
+  },
+  me: (parent, args, context) => {
+    if (context.currentUser === undefined) {
+      throw new Error("Unauthenticated!");
+    }
+
+    return context.currentUser;
   },
 };
 
 const Mutation = {
-  createUser: (parent, args) => {
-    return prisma.user.create({
-      data: {
-        email: args.email,
-        password: args.password,
-      },
-    });
-  },
-  signup: async (parent, args) => {
+  signup: async (parent, args, context) => {
     const password = await bcrypt.hash(args.password, 10);
 
-    const user = prisma.user.create({
+    const user = context.prisma.user.create({
       data: { ...args, password },
     });
     const token = jwt.sign({ userId: user.id }, APP_SECRET);
@@ -49,8 +47,8 @@ const Mutation = {
       user,
     };
   },
-  login: async (parent, args) => {
-    const user = await prisma.user.findUnique({
+  login: async (parent, args, context) => {
+    const user = await context.prisma.user.findUnique({
       where: { email: args.email },
     });
     if (!user) {
@@ -88,8 +86,4 @@ const Mutation = {
   // },
 };
 
-const resolvers = { User, Query, Mutation };
-
-module.exports = {
-  resolvers,
-};
+export const resolvers = { User, Query, Mutation };
