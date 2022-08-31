@@ -35,6 +35,7 @@ export const typeDefs = gql`
     name: String!
     icon: String
     subcategories: [Subcategory]
+    user: User
   }
 
   type Query {
@@ -46,8 +47,8 @@ export const typeDefs = gql`
   }
 
   type Mutation {
-    createUser(email: String!, password: String!): User!
     signup(email: String!, password: String!): AuthPayload
     login(email: String!, password: String!): AuthPayload
+    createCategory(name: String!, icon: String): Category!
   }
 `;

@@ -26,7 +26,7 @@ model Category {
   icon          String
   subcategories Subcategory[]
   user          User        @relation(fields: [userId], references: [id])
-  userId        String      @unique
+  userId        String      
 }
 
 model Subcategory {
@@ -35,7 +35,7 @@ model Subcategory {
   icon          String
   budgetAmount  Int
   category      Category    @relation(fields: [categoryId], references: [id])
-  categoryId    String      @unique
+  categoryId    String      
   expenses      Expense[]
 }
 
@@ -44,7 +44,7 @@ model Expense {
   date          DateTime
   amount        Int
   user          User        @relation(fields: [userId], references: [id])
-  userId        String      @unique
+  userId        String      
   subcategory   Subcategory @relation(fields: [subcategoryId], references: [id])
-  subcategoryId String      @unique
+  subcategoryId String      
 }

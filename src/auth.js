@@ -9,9 +9,7 @@ export async function authenticateUser(prisma, req) {
     // 2
     const tokenPayload = verify(token, APP_SECRET);
     // 3
-    const userId = tokenPayload.userId;
-    // 4
-    return await prisma.user.findUnique({ where: { id: userId } });
+    return await prisma.user.findUnique({ where: { id: tokenPayload.userId } });
   }
 
   return null;

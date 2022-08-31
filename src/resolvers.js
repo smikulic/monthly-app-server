@@ -8,13 +8,13 @@ const User = {
 };
 
 const Query = {
-  // enrollment: (parent, args) => {
-  //   return prisma.student.findMany({
-  //     where: { enrolled: true },
-  //   });
-  // },
   categories: (parent, args, context) => {
-    return context.prisma.category.findMany({});
+    return context.prisma.category.findMany({
+      where: { userId: context.currentUser.id },
+      include: {
+        user: true,
+      },
+    });
   },
   users: (parent, args, context) => {
     return context.prisma.user.findMany({});
@@ -31,6 +31,18 @@ const Query = {
 
     return context.currentUser;
   },
+  // Category: {
+  //   user: async (parent, args, context) => {
+  //     console.log({ parent });
+  //     if (!parent.userId) {
+  //       return null;
+  //     }
+
+  //     return context.prisma.category
+  //       .findUnique({ where: { id: parent.id } })
+  //       .postedBy();
+  //   },
+  // },
 };
 
 const Mutation = {
@@ -67,15 +79,18 @@ const Mutation = {
       user,
     };
   },
-
-  // createCategory: (parent, args) => {
-  //   return prisma.category.create({
-  //     data: {
-  //       name: args.name,
-  //       icon: args.icon || "",
-  //       userId: "",
-  //     },
-  //   });
+  createCategory: async (parent, args, context) => {
+    if (context.currentUser === null) {
+      throw new Error("Unauthenticated!");
+    }
+    return await context.prisma.category.create({
+      data: {
+        name: args.name,
+        icon: args.icon || "",
+        user: { connect: { id: context.currentUser.id } },
+      },
+    });
+  },
   //   // enroll: (parent, args) => {
   //   //   return prisma.student.update({
   //   //     where: { id: Number(args.id) },
@@ -83,7 +98,6 @@ const Mutation = {
   //   //       enrolled: true,
   //   //     },
   //   //   });
-  // },
 };
 
 export const resolvers = { User, Query, Mutation };
