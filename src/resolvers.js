@@ -9,12 +9,13 @@ const User = {
 
 const Query = {
   categories: (parent, args, context) => {
-    return context.prisma.category.findMany({
+    const categoriesResponse = context.prisma.category.findMany({
       where: { userId: context.currentUser.id },
       include: {
         user: true,
       },
     });
+    return categoriesResponse;
   },
   users: (parent, args, context) => {
     return context.prisma.user.findMany({});
@@ -91,6 +92,23 @@ const Mutation = {
         user: { connect: { id: context.currentUser.id } },
       },
     });
+  },
+  deleteCategory: async (parent, args, context) => {
+    if (context.currentUser === null) {
+      throw new Error("Unauthenticated!");
+    }
+
+    const deleteCategoryResponse = await context.prisma.category.delete({
+      where: {
+        id: args.id,
+      },
+    });
+
+    if (!deleteCategoryResponse) {
+      throw new Error("No such category found");
+    }
+
+    return deleteCategoryResponse;
   },
   //   // enroll: (parent, args) => {
   //   //   return prisma.student.update({

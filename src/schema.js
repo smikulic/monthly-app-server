@@ -50,5 +50,6 @@ export const typeDefs = gql`
     signup(email: String!, password: String!): AuthPayload
     login(email: String!, password: String!): AuthPayload
     createCategory(name: String!, icon: String): Category!
+    deleteCategory(id: ID!): Category!
   }
 `;
