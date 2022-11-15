@@ -41,6 +41,7 @@ export const typeDefs = gql`
   type Query {
     categories: [Category!]!
     category(id: ID!): Category!
+    subcategories: [Subcategory!]!
     users: [User!]!
     user(id: ID!): User!
     me: User!
@@ -51,5 +52,6 @@ export const typeDefs = gql`
     login(email: String!, password: String!): AuthPayload
     createCategory(name: String!, icon: String): Category!
     deleteCategory(id: ID!): Category!
+    # createExpense(name: String!): Expense!
   }
 `;

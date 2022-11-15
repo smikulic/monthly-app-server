@@ -7,16 +7,18 @@ const User = {
   email: (parent) => parent.email,
 };
 
-const Query = {
-  categories: (parent, args, context) => {
-    const categoriesResponse = context.prisma.category.findMany({
-      where: { userId: context.currentUser.id },
-      include: {
-        user: true,
-      },
+const Category = {
+  subcategories: (parent, args, context) => {
+    console.log({ parent });
+    const subcategoriesResponse = context.prisma.subcategory.findMany({
+      where: { categoryId: parent.id },
     });
-    return categoriesResponse;
+    console.log({ subcategoriesResponse });
+    return subcategoriesResponse;
   },
+};
+
+const Query = {
   users: (parent, args, context) => {
     return context.prisma.user.findMany({});
   },
@@ -31,6 +33,21 @@ const Query = {
     }
 
     return context.currentUser;
+  },
+  categories: (parent, args, context) => {
+    const categoriesResponse = context.prisma.category.findMany({
+      where: { userId: context.currentUser.id },
+      include: {
+        user: true,
+      },
+    });
+    return categoriesResponse;
+  },
+  category: (parent, args, context) => {
+    const categoryResponse = context.prisma.category.findFirst({
+      where: { id: args.id },
+    });
+    return categoryResponse;
   },
   // Category: {
   //   user: async (parent, args, context) => {
@@ -110,6 +127,18 @@ const Mutation = {
 
     return deleteCategoryResponse;
   },
+  // createExpense: async (parent, args, context) => {
+  //   if (context.currentUser === null) {
+  //     throw new Error("Unauthenticated!");
+  //   }
+  //   return await context.prisma.expense.create({
+  //     data: {
+  //       name: args.name,
+  //       icon: args.icon || "",
+  //       user: { connect: { id: context.currentUser.id } },
+  //     },
+  //   });
+  // },
   //   // enroll: (parent, args) => {
   //   //   return prisma.student.update({
   //   //     where: { id: Number(args.id) },
@@ -119,4 +148,4 @@ const Mutation = {
   //   //   });
 };
 
-export const resolvers = { User, Query, Mutation };
+export const resolvers = { User, Query, Mutation, Category };
