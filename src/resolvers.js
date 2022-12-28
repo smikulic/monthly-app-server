@@ -127,6 +127,36 @@ const Mutation = {
 
     return deleteCategoryResponse;
   },
+  createSubcategory: async (parent, args, context) => {
+    if (context.currentUser === null) {
+      throw new Error("Unauthenticated!");
+    }
+    return await context.prisma.subcategory.create({
+      data: {
+        name: args.name,
+        budgetAmount: args.budgetAmount,
+        icon: args.icon || "",
+        category: { connect: { id: args.categoryId } },
+      },
+    });
+  },
+  deleteSubcategory: async (parent, args, context) => {
+    if (context.currentUser === null) {
+      throw new Error("Unauthenticated!");
+    }
+
+    const deleteSubcategoryResponse = await context.prisma.subcategory.delete({
+      where: {
+        id: args.id,
+      },
+    });
+
+    if (!deleteSubcategoryResponse) {
+      throw new Error("No such subcategory found");
+    }
+
+    return deleteSubcategoryResponse;
+  },
   // createExpense: async (parent, args, context) => {
   //   if (context.currentUser === null) {
   //     throw new Error("Unauthenticated!");

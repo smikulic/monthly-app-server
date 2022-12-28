@@ -52,6 +52,13 @@ export const typeDefs = gql`
     login(email: String!, password: String!): AuthPayload
     createCategory(name: String!, icon: String): Category!
     deleteCategory(id: ID!): Category!
+    createSubcategory(
+      categoryId: ID!
+      name: String!
+      budgetAmount: Int!
+      icon: String
+    ): Subcategory!
+    deleteSubcategory(id: ID!): Subcategory!
     # createExpense(name: String!): Expense!
   }
 `;
