@@ -17,6 +17,16 @@ const Category = {
     return subcategoriesResponse;
   },
 };
+const Subcategory = {
+  expenses: (parent, args, context) => {
+    console.log({ parent });
+    const expensesResponse = context.prisma.expense.findMany({
+      where: { subcategoryId: parent.id },
+    });
+    console.log({ expensesResponse });
+    return expensesResponse;
+  },
+};
 
 const Query = {
   users: (parent, args, context) => {
@@ -49,18 +59,12 @@ const Query = {
     });
     return categoryResponse;
   },
-  // Category: {
-  //   user: async (parent, args, context) => {
-  //     console.log({ parent });
-  //     if (!parent.userId) {
-  //       return null;
-  //     }
-
-  //     return context.prisma.category
-  //       .findUnique({ where: { id: parent.id } })
-  //       .postedBy();
-  //   },
-  // },
+  subcategory: (parent, args, context) => {
+    const subcategoryResponse = context.prisma.subcategory.findFirst({
+      where: { id: args.id },
+    });
+    return subcategoryResponse;
+  },
 };
 
 const Mutation = {
@@ -157,6 +161,19 @@ const Mutation = {
 
     return deleteSubcategoryResponse;
   },
+  createExpense: async (parent, args, context) => {
+    if (context.currentUser === null) {
+      throw new Error("Unauthenticated!");
+    }
+    return await context.prisma.expense.create({
+      data: {
+        amount: args.amount,
+        date: new Date(args.date),
+        user: { connect: { id: context.currentUser.id } },
+        subcategory: { connect: { id: args.subcategoryId } },
+      },
+    });
+  },
   // createExpense: async (parent, args, context) => {
   //   if (context.currentUser === null) {
   //     throw new Error("Unauthenticated!");
@@ -178,4 +195,4 @@ const Mutation = {
   //   //   });
 };
 
-export const resolvers = { User, Query, Mutation, Category };
+export const resolvers = { User, Query, Mutation, Category, Subcategory };

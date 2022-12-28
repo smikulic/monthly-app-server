@@ -39,9 +39,11 @@ export const typeDefs = gql`
   }
 
   type Query {
-    categories: [Category!]!
     category(id: ID!): Category!
+    categories: [Category!]!
+    subcategory(id: ID!): Subcategory!
     subcategories: [Subcategory!]!
+    subcategoryExpenses: [Expense!]!
     users: [User!]!
     user(id: ID!): User!
     me: User!
@@ -59,6 +61,6 @@ export const typeDefs = gql`
       icon: String
     ): Subcategory!
     deleteSubcategory(id: ID!): Subcategory!
-    # createExpense(name: String!): Expense!
+    createExpense(subcategoryId: ID!, amount: Int!, date: String!): Expense!
   }
 `;
