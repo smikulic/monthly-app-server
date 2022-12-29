@@ -168,7 +168,7 @@ const Mutation = {
     return await context.prisma.expense.create({
       data: {
         amount: args.amount,
-        date: new Date(args.date),
+        date: new Date(args.date).toISOString(),
         user: { connect: { id: context.currentUser.id } },
         subcategory: { connect: { id: args.subcategoryId } },
       },
