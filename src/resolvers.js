@@ -19,10 +19,25 @@ const Category = {
 };
 const Subcategory = {
   expenses: (parent, args, context) => {
+    console.log("Subcategory expenses");
     console.log({ parent });
+    console.log({ args });
+    const filterDate = args.filter.date;
+    const filterDateYear = new Date(filterDate).getFullYear();
+    const filterDateMonth = new Date(filterDate).getMonth();
+    const dateGreaterThanOrEqual = new Date(filterDateYear, filterDateMonth, 1);
+    const dateLessThan = new Date(filterDateYear, filterDateMonth + 1, 1);
+
     const expensesResponse = context.prisma.expense.findMany({
-      where: { subcategoryId: parent.id },
+      where: {
+        subcategoryId: parent.id,
+        date: {
+          gte: dateGreaterThanOrEqual,
+          lt: dateLessThan,
+        },
+      },
     });
+
     console.log({ expensesResponse });
     return expensesResponse;
   },

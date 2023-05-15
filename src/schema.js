@@ -27,7 +27,7 @@ export const typeDefs = gql`
     name: String!
     icon: String
     budgetAmount: Int
-    expenses: [Expense]
+    expenses(filter: ExpenseFilterInput): [Expense]
   }
 
   type Category {
@@ -38,12 +38,16 @@ export const typeDefs = gql`
     user: User
   }
 
+  input ExpenseFilterInput {
+    date: String!
+  }
+
   type Query {
     category(id: ID!): Category!
     categories: [Category!]!
     subcategory(id: ID!): Subcategory!
     subcategories: [Subcategory!]!
-    subcategoryExpenses: [Expense!]!
+    # subcategoryExpenses: [Expense!]!
     users: [User!]!
     user(id: ID!): User!
     me: User!
