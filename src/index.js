@@ -5,7 +5,17 @@ import { contextFactory } from "./context";
 
 const port = process.env.PORT || 3001;
 
+var corsOptions = {
+  origin: "*",
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  preflightContinue: false,
+  optionsSuccessStatus: 204,
+  // credentials: true
+};
+
 const server = new ApolloServer({
+  // cors: false,
+  cors: corsOptions,
   resolvers,
   typeDefs,
   // csrfPrevention: true,
