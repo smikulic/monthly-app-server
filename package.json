@@ -4,6 +4,7 @@
   "description": "",
   "main": "start.js",
   "scripts": {
+    "build": "prisma migrate deploy",
     "start": "nodemon ./start.js"
   },
   "keywords": [],
