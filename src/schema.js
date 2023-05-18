@@ -43,11 +43,11 @@ export const typeDefs = gql`
   }
 
   type Query {
+    expenses(filter: ExpenseFilterInput): [Expense!]!
     category(id: ID!): Category!
     categories: [Category!]!
     subcategory(id: ID!): Subcategory!
     subcategories: [Subcategory!]!
-    # subcategoryExpenses: [Expense!]!
     users: [User!]!
     user(id: ID!): User!
     me: User!
