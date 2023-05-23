@@ -18,6 +18,7 @@ export const typeDefs = gql`
 
   type Expense {
     id: ID!
+    subcategoryId: ID!
     date: String!
     amount: Int!
   }
