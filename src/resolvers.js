@@ -21,39 +21,24 @@ const User = {
 
 const Category = {
   subcategories: (parent, args, context) => {
-    console.log({ parent });
     const subcategoriesResponse = context.prisma.subcategory.findMany({
       where: { categoryId: parent.id },
     });
-    console.log({ subcategoriesResponse });
     return subcategoriesResponse;
   },
 };
 const Subcategory = {
   expenses: (parent, args, context) => {
-    console.log("Subcategory expenses");
-    console.log({ parent });
-    console.log({ args });
     const filterDate = args.filter.date;
     const filterDateRange = getFilterDateRange(filterDate);
-
-    // const filterDateYear = new Date(filterDate).getFullYear();
-    // const filterDateMonth = new Date(filterDate).getMonth();
-    // const dateGreaterThanOrEqual = new Date(filterDateYear, filterDateMonth, 1);
-    // const dateLessThan = new Date(filterDateYear, filterDateMonth + 1, 1);
 
     const expensesResponse = context.prisma.expense.findMany({
       where: {
         subcategoryId: parent.id,
-        // date: {
-        //   gte: dateGreaterThanOrEqual,
-        //   lt: dateLessThan,
-        // },
         date: filterDateRange,
       },
     });
 
-    console.log({ expensesResponse });
     return expensesResponse;
   },
 };
@@ -75,9 +60,6 @@ const Query = {
     return context.currentUser;
   },
   expenses: (parent, args, context) => {
-    console.log("Expenses");
-    console.log({ parent });
-    console.log({ args });
     const filterDate = args.filter.date;
     const filterDateRange = getFilterDateRange(filterDate);
 
@@ -87,7 +69,6 @@ const Query = {
         user: true,
       },
     });
-    console.log({ expensesResponse });
     return expensesResponse;
   },
   categories: (parent, args, context) => {
