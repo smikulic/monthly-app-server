@@ -37,10 +37,13 @@ const Category = {
     }
 
     // Map through each subcategory and update the createdAt property
-    const updatedSubcategories = subcategoriesResponse.map((subcategory) => ({
-      ...subcategory,
-      createdAt: subcategory.createdAt.toString(),
-    }));
+    const updatedSubcategories = subcategoriesResponse.map((subcategory) => {
+      console.log({subcategory})
+      return {
+        ...subcategory,
+        createdAt: subcategory.createdAt.toString(),
+      };
+    });
 
     return updatedSubcategories;
   },
