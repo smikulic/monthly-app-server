@@ -1,4 +1,3 @@
-import { GraphQLScalarType, Kind } from "graphql";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { APP_SECRET } from "./auth";
@@ -21,11 +20,29 @@ const User = {
 };
 
 const Category = {
-  subcategories: (parent, args, context) => {
-    const subcategoriesResponse = context.prisma.subcategory.findMany({
+  // subcategories: (parent, args, context) => {
+  //   const subcategoriesResponse = context.prisma.subcategory.findMany({
+  //     where: { categoryId: parent.id },
+  //   });
+  //   return subcategoriesResponse;
+  // },
+  subcategories: async (parent, args, context) => {
+    const subcategoriesResponse = await context.prisma.subcategory.findMany({
       where: { categoryId: parent.id },
     });
-    return subcategoriesResponse;
+
+    // Check if subcategoriesResponse is empty or undefined
+    if (!subcategoriesResponse || subcategoriesResponse.length === 0) {
+      return null;
+    }
+
+    // Map through each subcategory and update the createdAt property
+    const updatedSubcategories = subcategoriesResponse.map((subcategory) => ({
+      ...subcategory,
+      createdAt: subcategory.createdAt.toString(),
+    }));
+
+    return updatedSubcategories;
   },
 };
 const Subcategory = {
@@ -87,18 +104,37 @@ const Query = {
     });
     return categoryResponse;
   },
-  subcategory: (parent, args, context) => {
-    const subcategoryResponse = context.prisma.subcategory.findFirst({
+  // subcategory: (parent, args, context) => {
+  //   const subcategoryResponse = context.prisma.subcategory.findFirst({
+  //     where: { id: args.id },
+  //   });
+
+  //   let response;
+
+  //   console.log({ subcategoryResponse });
+  //   const getResult = async () => {
+  //     return await subcategoryResponse;
+  //   };
+  //   getResult().then((result) => {
+  //     console.log({ result });
+  //     response = result;
+  //   });
+
+  //   console.log({ response });
+
+  //   return subcategoryResponse;
+  // },
+  subcategory: async (parent, args, context) => {
+    const subcategoryResponse = await context.prisma.subcategory.findFirst({
       where: { id: args.id },
     });
 
-    // console.log({subcategoryResponse})
-    // const getResult = async () => {
-    //   return await subcategoryResponse
-    // }
-    // getResult().then(result => {
-    //   console.log({result})
-    // })
+    // Check if subcategoryResponse is null or undefined
+    if (!subcategoryResponse) {
+      return null;
+    }
+
+    subcategoryResponse.createdAt = subcategoryResponse.createdAt.toString();
 
     return subcategoryResponse;
   },
@@ -223,42 +259,9 @@ const Mutation = {
   //     },
   //   });
   // },
-  //   // enroll: (parent, args) => {
-  //   //   return prisma.student.update({
-  //   //     where: { id: Number(args.id) },
-  //   //     data: {
-  //   //       enrolled: true,
-  //   //     },
-  //   //   });
 };
 
-const dateScalar = new GraphQLScalarType({
-  name: "Date",
-  description: "Date custom scalar type",
-  serialize(value) {
-    if (value instanceof Date) {
-      return value.getTime(); // Convert outgoing Date to integer for JSON
-    }
-    throw Error("GraphQL Date Scalar serializer expected a `Date` object");
-  },
-  parseValue(value) {
-    if (typeof value === "number") {
-      return new Date(value); // Convert incoming integer to Date
-    }
-    throw new Error("GraphQL Date Scalar parser expected a `number`");
-  },
-  parseLiteral(ast) {
-    if (ast.kind === Kind.INT) {
-      // Convert hard-coded AST string to integer and then to Date
-      return new Date(parseInt(ast.value, 10));
-    }
-    // Invalid hard-coded value (not an integer)
-    return null;
-  },
-});
-
 export const resolvers = {
-  Date: dateScalar,
   User,
   Query,
   Mutation,

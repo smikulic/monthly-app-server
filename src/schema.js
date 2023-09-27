@@ -1,8 +1,6 @@
 import { gql } from "apollo-server";
 
 export const typeDefs = gql`
-  scalar Date
-
   type User {
     id: ID!
     email: String!
@@ -27,7 +25,7 @@ export const typeDefs = gql`
 
   type Subcategory {
     id: ID!
-    createdAt: Date!
+    createdAt: String!
     name: String!
     icon: String
     budgetAmount: Int
