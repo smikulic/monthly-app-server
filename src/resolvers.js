@@ -24,6 +24,7 @@ const Category = {
     const subcategoriesResponse = context.prisma.subcategory.findMany({
       where: { categoryId: parent.id },
     });
+    console.log("AHA")
     return subcategoriesResponse;
   },
   // subcategories: async (parent, args, context) => {
