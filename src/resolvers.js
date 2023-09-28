@@ -20,33 +20,33 @@ const User = {
 };
 
 const Category = {
-  // subcategories: (parent, args, context) => {
-  //   const subcategoriesResponse = context.prisma.subcategory.findMany({
-  //     where: { categoryId: parent.id },
-  //   });
-  //   return subcategoriesResponse;
-  // },
-  subcategories: async (parent, args, context) => {
-    const subcategoriesResponse = await context.prisma.subcategory.findMany({
+  subcategories: (parent, args, context) => {
+    const subcategoriesResponse = context.prisma.subcategory.findMany({
       where: { categoryId: parent.id },
     });
-
-    // Check if subcategoriesResponse is empty or undefined
-    if (!subcategoriesResponse || subcategoriesResponse.length === 0) {
-      return null;
-    }
-
-    // Map through each subcategory and update the createdAt property
-    const updatedSubcategories = subcategoriesResponse.map((subcategory) => {
-      console.log({subcategory})
-      return {
-        ...subcategory,
-        createdAt: subcategory.createdAt.toString(),
-      };
-    });
-
-    return updatedSubcategories;
+    return subcategoriesResponse;
   },
+  // subcategories: async (parent, args, context) => {
+  //   const subcategoriesResponse = await context.prisma.subcategory.findMany({
+  //     where: { categoryId: parent.id },
+  //   });
+
+  //   // Check if subcategoriesResponse is empty or undefined
+  //   if (!subcategoriesResponse || subcategoriesResponse.length === 0) {
+  //     return null;
+  //   }
+
+  //   // Map through each subcategory and update the createdAt property
+  //   const updatedSubcategories = subcategoriesResponse.map((subcategory) => {
+  //     console.log({ subcategory });
+  //     return {
+  //       ...subcategory,
+  //       createdAt: subcategory.createdAt.toString(),
+  //     };
+  //   });
+
+  //   return updatedSubcategories;
+  // },
 };
 const Subcategory = {
   expenses: (parent, args, context) => {
@@ -107,40 +107,38 @@ const Query = {
     });
     return categoryResponse;
   },
-  // subcategory: (parent, args, context) => {
-  //   const subcategoryResponse = context.prisma.subcategory.findFirst({
-  //     where: { id: args.id },
-  //   });
-
-  //   let response;
-
-  //   console.log({ subcategoryResponse });
-  //   const getResult = async () => {
-  //     return await subcategoryResponse;
-  //   };
-  //   getResult().then((result) => {
-  //     console.log({ result });
-  //     response = result;
-  //   });
-
-  //   console.log({ response });
-
-  //   return subcategoryResponse;
-  // },
-  subcategory: async (parent, args, context) => {
-    const subcategoryResponse = await context.prisma.subcategory.findFirst({
+  subcategory: (parent, args, context) => {
+    const subcategoryResponse = context.prisma.subcategory.findFirst({
       where: { id: args.id },
     });
 
-    // Check if subcategoryResponse is null or undefined
-    if (!subcategoryResponse) {
-      return null;
-    }
-
-    subcategoryResponse.createdAt = subcategoryResponse.createdAt.toString();
+    // let response;
+    // console.log({ subcategoryResponse });
+    // const getResult = async () => {
+    //   return await subcategoryResponse;
+    // };
+    // getResult().then((result) => {
+    //   console.log({ result });
+    //   response = result;
+    // });
+    // console.log({ response });
 
     return subcategoryResponse;
   },
+  // subcategory: async (parent, args, context) => {
+  //   const subcategoryResponse = await context.prisma.subcategory.findFirst({
+  //     where: { id: args.id },
+  //   });
+
+  //   // Check if subcategoryResponse is null or undefined
+  //   if (!subcategoryResponse) {
+  //     return null;
+  //   }
+
+  //   subcategoryResponse.createdAt = subcategoryResponse.createdAt.toString();
+
+  //   return subcategoryResponse;
+  // },
 };
 
 const Mutation = {
