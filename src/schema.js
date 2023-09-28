@@ -25,7 +25,7 @@ export const typeDefs = gql`
 
   type Subcategory {
     id: ID!
-    createdAt: String!
+    createdAt: String
     name: String!
     icon: String
     budgetAmount: Int
