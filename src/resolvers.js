@@ -248,6 +248,23 @@ const Mutation = {
       },
     });
   },
+  deleteExpense: async (parent, args, context) => {
+    if (context.currentUser === null) {
+      throw new Error("Unauthenticated!");
+    }
+
+    const deleteExpenseResponse = await context.prisma.expense.delete({
+      where: {
+        id: args.id,
+      },
+    });
+
+    if (!deleteExpenseResponse) {
+      throw new Error("No such expense found");
+    }
+
+    return deleteExpenseResponse;
+  },
   // createExpense: async (parent, args, context) => {
   //   if (context.currentUser === null) {
   //     throw new Error("Unauthenticated!");

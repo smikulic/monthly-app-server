@@ -68,5 +68,6 @@ export const typeDefs = gql`
     ): Subcategory!
     deleteSubcategory(id: ID!): Subcategory!
     createExpense(subcategoryId: ID!, amount: Int!, date: String!): Expense!
+    deleteExpense(id: ID!): Expense!
   }
 `;
