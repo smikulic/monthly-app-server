@@ -46,6 +46,7 @@ export const typeDefs = gql`
 
   type Query {
     expenses(filter: ExpenseFilterInput): [Expense!]!
+    chartExpenses(filter: ExpenseFilterInput): [Int!]!
     category(id: ID!): Category!
     categories: [Category!]!
     subcategory(id: ID!): Subcategory!

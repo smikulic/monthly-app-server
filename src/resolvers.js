@@ -26,27 +26,6 @@ const Category = {
     });
     return subcategoriesResponse;
   },
-  // subcategories: async (parent, args, context) => {
-  //   const subcategoriesResponse = await context.prisma.subcategory.findMany({
-  //     where: { categoryId: parent.id },
-  //   });
-
-  //   // Check if subcategoriesResponse is empty or undefined
-  //   if (!subcategoriesResponse || subcategoriesResponse.length === 0) {
-  //     return null;
-  //   }
-
-  //   // Map through each subcategory and update the createdAt property
-  //   const updatedSubcategories = subcategoriesResponse.map((subcategory) => {
-  //     console.log({ subcategory });
-  //     return {
-  //       ...subcategory,
-  //       createdAt: subcategory.createdAt.toString(),
-  //     };
-  //   });
-
-  //   return updatedSubcategories;
-  // },
 };
 const Subcategory = {
   expenses: (parent, args, context) => {
@@ -91,6 +70,36 @@ const Query = {
       },
     });
     return expensesResponse;
+  },
+  chartExpenses: async (parent, args, context) => {
+    const filterDate = args.filter.date;
+    const filterDateYear = new Date(filterDate).getFullYear();
+
+    const startDate = new Date(`${filterDateYear}-01-01`);
+    const endDate = new Date(`${filterDateYear}-12-31`);
+
+    const expensesResponse = await context.prisma.expense.findMany({
+      where: {
+        userId: context.currentUser.id,
+        date: {
+          gte: startDate,
+          lte: endDate,
+        },
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    // Initialize an array of 12 zeros (for each month's total expenses).
+    const monthlyTotals = new Array(12).fill(0);
+
+    expensesResponse.forEach((expense) => {
+      const month = expense.date.getMonth(); // getMonth() returns a zero-based index.
+      monthlyTotals[month] += expense.amount;
+    });
+
+    return monthlyTotals;
   },
   categories: (parent, args, context) => {
     const categoriesResponse = context.prisma.category.findMany({
