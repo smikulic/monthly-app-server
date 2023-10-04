@@ -154,9 +154,11 @@ const Mutation = {
   signup: async (parent, args, context) => {
     const password = await bcrypt.hash(args.password, 10);
 
-    const user = context.prisma.user.create({
+    const user = await context.prisma.user.create({
       data: { ...args, password },
     });
+
+    console.log({ user });
 
     const token = jwt.sign({ userId: user.id }, APP_SECRET);
 
@@ -179,6 +181,9 @@ const Mutation = {
     }
 
     const token = jwt.sign({ userId: user.id }, APP_SECRET);
+
+    console.log({ token });
+    console.log({ user });
 
     return {
       token,
