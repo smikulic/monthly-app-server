@@ -158,8 +158,6 @@ const Mutation = {
       data: { ...args, password },
     });
 
-    console.log({ user });
-
     const token = jwt.sign({ userId: user.id }, APP_SECRET);
 
     return {
@@ -182,9 +180,6 @@ const Mutation = {
 
     const token = jwt.sign({ userId: user.id }, APP_SECRET);
 
-    console.log({ token });
-    console.log({ user });
-
     return {
       token,
       user,
@@ -199,6 +194,19 @@ const Mutation = {
         name: args.name,
         icon: args.icon || "",
         user: { connect: { id: context.currentUser.id } },
+      },
+    });
+  },
+  updateCategory: async (parent, args, context) => {
+    if (context.currentUser === null) {
+      throw new Error("Unauthenticated!");
+    }
+    return await context.prisma.category.update({
+      where: {
+        id: args.id,
+      },
+      data: {
+        name: args.name,
       },
     });
   },
@@ -232,6 +240,20 @@ const Mutation = {
       },
     });
   },
+  updateSubcategory: async (parent, args, context) => {
+    if (context.currentUser === null) {
+      throw new Error("Unauthenticated!");
+    }
+    return await context.prisma.subcategory.update({
+      where: {
+        id: args.id,
+      },
+      data: {
+        name: args.name,
+        budgetAmount: args.budgetAmount,
+      },
+    });
+  },
   deleteSubcategory: async (parent, args, context) => {
     if (context.currentUser === null) {
       throw new Error("Unauthenticated!");
@@ -259,6 +281,20 @@ const Mutation = {
         date: new Date(args.date).toISOString(),
         user: { connect: { id: context.currentUser.id } },
         subcategory: { connect: { id: args.subcategoryId } },
+      },
+    });
+  },
+  updateExpense: async (parent, args, context) => {
+    if (context.currentUser === null) {
+      throw new Error("Unauthenticated!");
+    }
+    return await context.prisma.expense.update({
+      where: {
+        id: args.id,
+      },
+      data: {
+        amount: args.amount,
+        date: new Date(args.date).toISOString(),
       },
     });
   },
