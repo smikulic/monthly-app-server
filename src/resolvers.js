@@ -295,6 +295,7 @@ const Mutation = {
       data: {
         amount: args.amount,
         date: new Date(args.date).toISOString(),
+        subcategory: { connect: { id: args.subcategoryId } },
       },
     });
   },
