@@ -2,7 +2,6 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import "dotenv/config";
 var postmark = require("postmark");
-// import { APP_SECRET } from "./auth";
 
 let client = new postmark.ServerClient(process.env.POSTMARK_API_KEY);
 
@@ -163,7 +162,6 @@ const Mutation = {
     });
 
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET);
-    // const token = jwt.sign({ userId: user.id }, APP_SECRET);
 
     return {
       token,
@@ -184,7 +182,6 @@ const Mutation = {
     }
 
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET);
-    // const token = jwt.sign({ userId: user.id }, APP_SECRET);
 
     return {
       token,
@@ -203,9 +200,6 @@ const Mutation = {
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
       expiresIn: "24h",
     });
-    // const token = jwt.sign({ userId: user.id }, APP_SECRET, {
-    //   expiresIn: "24h",
-    // });
 
     // Send email to user with url and token
     client.sendEmailWithTemplate({
@@ -226,7 +220,6 @@ const Mutation = {
   resetPassword: async (parent, args, context) => {
     // Verify token and check if the user exist
     const { userId } = jwt.verify(args.token, process.env.JWT_SECRET);
-    // const { userId } = jwt.verify(args.token, APP_SECRET);
 
     const userExists = !!(await context.prisma.user.findFirst({
       where: {
@@ -379,18 +372,6 @@ const Mutation = {
 
     return deleteExpenseResponse;
   },
-  // createExpense: async (parent, args, context) => {
-  //   if (context.currentUser === null) {
-  //     throw new Error("Unauthenticated!");
-  //   }
-  //   return await context.prisma.expense.create({
-  //     data: {
-  //       name: args.name,
-  //       icon: args.icon || "",
-  //       user: { connect: { id: context.currentUser.id } },
-  //     },
-  //   });
-  // },
 };
 
 export const resolvers = {
