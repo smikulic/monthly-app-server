@@ -16,6 +16,10 @@ export const typeDefs = gql`
     user: User
   }
 
+  type PasswordResetRequestPayload {
+    email: String!
+  }
+
   type Expense {
     id: ID!
     subcategoryId: ID!
@@ -59,6 +63,8 @@ export const typeDefs = gql`
   type Mutation {
     signup(email: String!, password: String!): AuthPayload
     login(email: String!, password: String!): AuthPayload
+    resetPasswordRequest(email: String!): PasswordResetRequestPayload!
+    resetPassword(token: String!, password: String!): User!
     createCategory(name: String!, icon: String): Category!
     updateCategory(id: ID!, name: String!, icon: String): Category!
     deleteCategory(id: ID!): Category!

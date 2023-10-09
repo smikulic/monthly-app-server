@@ -1,6 +1,10 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { APP_SECRET } from "./auth";
+import "dotenv/config";
+var postmark = require("postmark");
+// import { APP_SECRET } from "./auth";
+
+let client = new postmark.ServerClient(process.env.POSTMARK_API_KEY);
 
 const getFilterDateRange = (filterDate) => {
   const filterDateYear = new Date(filterDate).getFullYear();
@@ -158,7 +162,8 @@ const Mutation = {
       data: { ...args, password },
     });
 
-    const token = jwt.sign({ userId: user.id }, APP_SECRET);
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET);
+    // const token = jwt.sign({ userId: user.id }, APP_SECRET);
 
     return {
       token,
@@ -178,12 +183,70 @@ const Mutation = {
       throw new Error("Invalid password");
     }
 
-    const token = jwt.sign({ userId: user.id }, APP_SECRET);
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET);
+    // const token = jwt.sign({ userId: user.id }, APP_SECRET);
 
     return {
       token,
       user,
     };
+  },
+  resetPasswordRequest: async (parent, args, context) => {
+    const user = await context.prisma.user.findUnique({
+      where: { email: args.email },
+    });
+
+    if (!user) {
+      throw new Error("No such user found");
+    }
+
+    const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
+      expiresIn: "24h",
+    });
+    // const token = jwt.sign({ userId: user.id }, APP_SECRET, {
+    //   expiresIn: "24h",
+    // });
+
+    // Send email to user with url and token
+    client.sendEmailWithTemplate({
+      From: "support@yourmonthly.app",
+      To: user.email,
+      TemplateAlias: "password-reset",
+      TemplateModel: {
+        product_name: "Monthly App",
+        action_url: `https://yourmonthly.app/reset-password?resetToken=${token}`,
+        support_url: "support@yourmonthly.app",
+      },
+      MessageStream: "outbound",
+    });
+    console.log(`Email sent to user ${user.email} with url and token ${token}`);
+
+    return { email: user.email };
+  },
+  resetPassword: async (parent, args, context) => {
+    // Verify token and check if the user exist
+    const { userId } = jwt.verify(args.token, process.env.JWT_SECRET);
+    // const { userId } = jwt.verify(args.token, APP_SECRET);
+
+    const userExists = !!(await context.prisma.user.findFirst({
+      where: {
+        id: userId,
+      },
+    }));
+
+    if (!userExists) {
+      throw new Error("No such user found");
+    }
+
+    // If no error, set new password.
+    const newPassword = await bcrypt.hash(args.password, 10);
+
+    const updatedUser = await context.prisma.user.update({
+      where: { id: userId },
+      data: { password: newPassword },
+    });
+
+    return updatedUser;
   },
   createCategory: async (parent, args, context) => {
     if (context.currentUser === null) {
