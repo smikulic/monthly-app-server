@@ -317,6 +317,7 @@ const Mutation = {
         id: args.id,
       },
       data: {
+        categoryId: args.categoryId,
         name: args.name,
         budgetAmount: args.budgetAmount,
       },
