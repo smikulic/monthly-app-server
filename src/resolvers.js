@@ -26,6 +26,9 @@ const Category = {
   subcategories: (parent, args, context) => {
     const subcategoriesResponse = context.prisma.subcategory.findMany({
       where: { categoryId: parent.id },
+      orderBy: {
+        createdAt: "asc", // or 'desc' for descending order
+      },
     });
     return subcategoriesResponse;
   },
@@ -39,6 +42,9 @@ const Subcategory = {
       where: {
         subcategoryId: parent.id,
         date: filterDateRange,
+      },
+      orderBy: {
+        createdAt: "asc", // or 'desc' for descending order
       },
     });
 
@@ -70,6 +76,9 @@ const Query = {
       where: { userId: context.currentUser.id, date: filterDateRange },
       include: {
         user: true,
+      },
+      orderBy: {
+        date: "asc", // or 'desc' for descending order
       },
     });
     return expensesResponse;
@@ -109,6 +118,9 @@ const Query = {
       where: { userId: context.currentUser.id },
       include: {
         user: true,
+      },
+      orderBy: {
+        createdAt: "asc", // or 'desc' for descending order
       },
     });
     return categoriesResponse;
