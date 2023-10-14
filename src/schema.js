@@ -31,6 +31,7 @@ export const typeDefs = gql`
     id: ID!
     categoryId: ID!
     createdAt: String!
+    rolloverDate: String!
     name: String!
     icon: String
     budgetAmount: Int
@@ -74,12 +75,14 @@ export const typeDefs = gql`
       name: String!
       budgetAmount: Int!
       icon: String
+      rolloverDate: String
     ): Subcategory!
     updateSubcategory(
       id: ID!
       categoryId: ID!
       name: String!
       budgetAmount: Int!
+      rolloverDate: String
     ): Subcategory!
     deleteSubcategory(id: ID!): Subcategory!
     createExpense(subcategoryId: ID!, amount: Int!, date: String!): Expense!

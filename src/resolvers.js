@@ -303,6 +303,7 @@ const Mutation = {
       data: {
         name: args.name,
         budgetAmount: args.budgetAmount,
+        rolloverDate: new Date(args.rolloverDate).toISOString(),
         icon: args.icon || "",
         category: { connect: { id: args.categoryId } },
       },
@@ -320,6 +321,7 @@ const Mutation = {
         categoryId: args.categoryId,
         name: args.name,
         budgetAmount: args.budgetAmount,
+        rolloverDate: new Date(args.rolloverDate).toISOString(),
       },
     });
   },
