@@ -1,20 +1,19 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import "dotenv/config";
+import { getFilterDateRange } from "./utils";
 var postmark = require("postmark");
 
 let client = new postmark.ServerClient(process.env.POSTMARK_API_KEY);
 
-const getFilterDateRange = (filterDate) => {
-  const filterDateYear = new Date(filterDate).getFullYear();
-  const filterDateMonth = new Date(filterDate).getMonth();
-  const dateGreaterThanOrEqual = new Date(filterDateYear, filterDateMonth, 1);
-  const dateLessThan = new Date(filterDateYear, filterDateMonth + 1, 1);
+const ensureAuthenticated = (currentUser) => {
+  if (currentUser === null) {
+    throw new Error("Unauthenticated!");
+  }
+};
 
-  return {
-    gte: dateGreaterThanOrEqual,
-    lt: dateLessThan,
-  };
+const notFoundError = (resource) => {
+  throw new Error(`No such ${resource} found`);
 };
 
 const User = {
@@ -62,9 +61,7 @@ const Query = {
     });
   },
   me: (parent, args, context) => {
-    if (context.currentUser === undefined) {
-      throw new Error("Unauthenticated!");
-    }
+    ensureAuthenticated(context.currentUser);
 
     return context.currentUser;
   },
@@ -129,6 +126,9 @@ const Query = {
     const categoryResponse = context.prisma.category.findFirst({
       where: { id: args.id },
     });
+
+    if (!categoryResponse) notFoundError("Category");
+
     return categoryResponse;
   },
   subcategory: (parent, args, context) => {
@@ -136,33 +136,10 @@ const Query = {
       where: { id: args.id },
     });
 
-    // let response;
-    // console.log({ subcategoryResponse });
-    // const getResult = async () => {
-    //   return await subcategoryResponse;
-    // };
-    // getResult().then((result) => {
-    //   console.log({ result });
-    //   response = result;
-    // });
-    // console.log({ response });
+    if (!subcategoryResponse) notFoundError("Subcategory");
 
     return subcategoryResponse;
   },
-  // subcategory: async (parent, args, context) => {
-  //   const subcategoryResponse = await context.prisma.subcategory.findFirst({
-  //     where: { id: args.id },
-  //   });
-
-  //   // Check if subcategoryResponse is null or undefined
-  //   if (!subcategoryResponse) {
-  //     return null;
-  //   }
-
-  //   subcategoryResponse.createdAt = subcategoryResponse.createdAt.toString();
-
-  //   return subcategoryResponse;
-  // },
 };
 
 const Mutation = {
@@ -184,9 +161,7 @@ const Mutation = {
     const user = await context.prisma.user.findUnique({
       where: { email: args.email },
     });
-    if (!user) {
-      throw new Error("No such user found");
-    }
+    if (!user) notFoundError("User");
 
     const valid = await bcrypt.compare(args.password, user.password);
     if (!valid) {
@@ -205,9 +180,7 @@ const Mutation = {
       where: { email: args.email },
     });
 
-    if (!user) {
-      throw new Error("No such user found");
-    }
+    if (!user) notFoundError("User");
 
     const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET, {
       expiresIn: "24h",
@@ -239,9 +212,7 @@ const Mutation = {
       },
     }));
 
-    if (!userExists) {
-      throw new Error("No such user found");
-    }
+    if (!userExists) notFoundError("User");
 
     // If no error, set new password.
     const newPassword = await bcrypt.hash(args.password, 10);
@@ -254,9 +225,8 @@ const Mutation = {
     return updatedUser;
   },
   createCategory: async (parent, args, context) => {
-    if (context.currentUser === null) {
-      throw new Error("Unauthenticated!");
-    }
+    ensureAuthenticated(context.currentUser);
+
     return await context.prisma.category.create({
       data: {
         name: args.name,
@@ -266,9 +236,8 @@ const Mutation = {
     });
   },
   updateCategory: async (parent, args, context) => {
-    if (context.currentUser === null) {
-      throw new Error("Unauthenticated!");
-    }
+    ensureAuthenticated(context.currentUser);
+
     return await context.prisma.category.update({
       where: {
         id: args.id,
@@ -279,9 +248,7 @@ const Mutation = {
     });
   },
   deleteCategory: async (parent, args, context) => {
-    if (context.currentUser === null) {
-      throw new Error("Unauthenticated!");
-    }
+    ensureAuthenticated(context.currentUser);
 
     const deleteCategoryResponse = await context.prisma.category.delete({
       where: {
@@ -289,16 +256,13 @@ const Mutation = {
       },
     });
 
-    if (!deleteCategoryResponse) {
-      throw new Error("No such category found");
-    }
+    if (!deleteCategoryResponse) notFoundError("Category");
 
     return deleteCategoryResponse;
   },
   createSubcategory: async (parent, args, context) => {
-    if (context.currentUser === null) {
-      throw new Error("Unauthenticated!");
-    }
+    ensureAuthenticated(context.currentUser);
+
     return await context.prisma.subcategory.create({
       data: {
         name: args.name,
@@ -310,9 +274,8 @@ const Mutation = {
     });
   },
   updateSubcategory: async (parent, args, context) => {
-    if (context.currentUser === null) {
-      throw new Error("Unauthenticated!");
-    }
+    ensureAuthenticated(context.currentUser);
+
     return await context.prisma.subcategory.update({
       where: {
         id: args.id,
@@ -326,9 +289,7 @@ const Mutation = {
     });
   },
   deleteSubcategory: async (parent, args, context) => {
-    if (context.currentUser === null) {
-      throw new Error("Unauthenticated!");
-    }
+    ensureAuthenticated(context.currentUser);
 
     const deleteSubcategoryResponse = await context.prisma.subcategory.delete({
       where: {
@@ -336,16 +297,13 @@ const Mutation = {
       },
     });
 
-    if (!deleteSubcategoryResponse) {
-      throw new Error("No such subcategory found");
-    }
+    if (!deleteSubcategoryResponse) notFoundError("Subcategory");
 
     return deleteSubcategoryResponse;
   },
   createExpense: async (parent, args, context) => {
-    if (context.currentUser === null) {
-      throw new Error("Unauthenticated!");
-    }
+    ensureAuthenticated(context.currentUser);
+
     return await context.prisma.expense.create({
       data: {
         amount: args.amount,
@@ -356,9 +314,8 @@ const Mutation = {
     });
   },
   updateExpense: async (parent, args, context) => {
-    if (context.currentUser === null) {
-      throw new Error("Unauthenticated!");
-    }
+    ensureAuthenticated(context.currentUser);
+
     return await context.prisma.expense.update({
       where: {
         id: args.id,
@@ -371,9 +328,7 @@ const Mutation = {
     });
   },
   deleteExpense: async (parent, args, context) => {
-    if (context.currentUser === null) {
-      throw new Error("Unauthenticated!");
-    }
+    ensureAuthenticated(context.currentUser);
 
     const deleteExpenseResponse = await context.prisma.expense.delete({
       where: {
@@ -381,9 +336,7 @@ const Mutation = {
       },
     });
 
-    if (!deleteExpenseResponse) {
-      throw new Error("No such expense found");
-    }
+    if (!deleteExpenseResponse) notFoundError("Expense");
 
     return deleteExpenseResponse;
   },
