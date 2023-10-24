@@ -9,3 +9,13 @@ export const getFilterDateRange = (filterDate) => {
     lt: dateLessThan,
   };
 };
+
+export const ensureAuthenticated = (currentUser) => {
+  if (currentUser === null) {
+    throw new Error("Unauthenticated!");
+  }
+};
+
+export const notFoundError = (resource) => {
+  throw new Error(`No such ${resource} found`);
+};
