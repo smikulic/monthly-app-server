@@ -21,6 +21,7 @@
     "esm": "^3.2.25",
     "graphql": "^16.6.0",
     "jsonwebtoken": "^8.5.1",
+    "lodash": "^4.17.21",
     "postmark": "^3.0.19"
   },
   "devDependencies": {

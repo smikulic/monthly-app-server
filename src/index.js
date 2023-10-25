@@ -1,8 +1,17 @@
 import { ApolloServer } from "apollo-server";
 import * as Sentry from "@sentry/node";
 import { ProfilingIntegration } from "@sentry/profiling-node";
-import { typeDefs } from "./schema";
-import { resolvers } from "./resolvers";
+import { merge } from "lodash";
+import { userTypeDefs } from "./schemas/userSchemas";
+import { expenseTypeDefs } from "./schemas/expenseSchemas";
+import { categoryTypeDefs } from "./schemas/categorySchemas";
+import { subcategoryTypeDefs } from "./schemas/subcategorySchemas";
+import { savingGoalTypeDefs } from "./schemas/savingGoalSchemas";
+import { userResolvers } from "./resolvers/userResolvers";
+import { expenseResolvers } from "./resolvers/expenseResolvers";
+import { categoryResolvers } from "./resolvers/categoryResolvers";
+import { subcategoryResolvers } from "./resolvers/subcategoryResolvers";
+import { savingGoalResolvers } from "./resolvers/savingGoalResolvers";
 import { contextFactory } from "./context";
 
 Sentry.init({
@@ -24,11 +33,35 @@ var corsOptions = {
   // credentials: true
 };
 
+const Query = `
+  type Query {
+    _empty: String
+  }
+  type Mutation {
+    _empty: String
+  }
+`;
+const resolvers = {};
+
 const server = new ApolloServer({
   // cors: false,
   cors: corsOptions,
-  resolvers,
-  typeDefs,
+  resolvers: merge(
+    resolvers,
+    userResolvers,
+    expenseResolvers,
+    categoryResolvers,
+    subcategoryResolvers,
+    savingGoalResolvers
+  ),
+  typeDefs: [
+    Query,
+    userTypeDefs,
+    expenseTypeDefs,
+    categoryTypeDefs,
+    subcategoryTypeDefs,
+    savingGoalTypeDefs,
+  ],
   // csrfPrevention: true,
   context: ({ req }) => contextFactory(req),
 });
