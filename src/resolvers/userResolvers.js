@@ -106,6 +106,18 @@ export const userResolvers = {
 
       return updatedUser;
     },
+    updateUser: async (parent, args, context) => {
+      ensureAuthenticated(context.currentUser);
+
+      return await context.prisma.user.update({
+        where: {
+          id: args.id,
+        },
+        data: {
+          currency: args.currency,
+        },
+      });
+    },
   },
   User: {
     id: (parent, args, context, info) => parent.id,

@@ -35,5 +35,6 @@ export const userTypeDefs = gql`
     login(email: String!, password: String!): AuthPayload
     resetPasswordRequest(email: String!): PasswordResetRequestPayload!
     resetPassword(token: String!, password: String!): User!
+    updateUser(id: ID!, currency: String!): User!
   }
 `;
