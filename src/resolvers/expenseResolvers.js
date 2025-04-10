@@ -7,11 +7,32 @@ import {
 export const expenseResolvers = {
   Query: {
     expenses: (parent, args, context) => {
-      const filterDate = args.filter.date;
-      const filterDateRange = getFilterDateRange(filterDate);
+      // const filterDate = args.filter.date;
+      // const filterDateRange = getFilterDateRange(filterDate);
 
+      // const expensesResponse = context.prisma.expense.findMany({
+      //   where: { userId: context.currentUser.id, date: filterDateRange },
+      //   include: {
+      //     user: true,
+      //   },
+      //   orderBy: {
+      //     date: "asc", // or 'desc' for descending order
+      //   },
+      // });
+
+      // Build the base where clause with the user id.
+      const whereClause = { userId: context.currentUser.id };
+
+      // Check if args.filter exists and contains a date.
+      if (args.filter && args.filter.date) {
+        const filterDateRange = getFilterDateRange(args.filter.date);
+        // Append the date filter only if a date is provided.
+        whereClause.date = filterDateRange;
+      }
+
+      // Return expenses using the dynamically built filter.
       const expensesResponse = context.prisma.expense.findMany({
-        where: { userId: context.currentUser.id, date: filterDateRange },
+        where: whereClause,
         include: {
           user: true,
         },
@@ -19,6 +40,7 @@ export const expenseResolvers = {
           date: "asc", // or 'desc' for descending order
         },
       });
+
       return expensesResponse;
     },
     chartExpenses: async (parent, args, context) => {
