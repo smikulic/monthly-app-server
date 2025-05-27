@@ -2,7 +2,7 @@ import {
   getFilterDateRange,
   ensureAuthenticated,
   notFoundError,
-} from "../utils";
+} from "../utils.js";
 
 export const subcategoryResolvers = {
   Query: {

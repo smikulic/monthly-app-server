@@ -1,18 +1,20 @@
-import { ApolloServer } from "apollo-server";
+import { ApolloServer } from "@apollo/server";
+import { startStandaloneServer } from "@apollo/server/standalone";
 import * as Sentry from "@sentry/node";
 import { ProfilingIntegration } from "@sentry/profiling-node";
-import { merge } from "lodash";
-import { userTypeDefs } from "./schemas/userSchemas";
-import { expenseTypeDefs } from "./schemas/expenseSchemas";
-import { categoryTypeDefs } from "./schemas/categorySchemas";
-import { subcategoryTypeDefs } from "./schemas/subcategorySchemas";
-import { savingGoalTypeDefs } from "./schemas/savingGoalSchemas";
-import { userResolvers } from "./resolvers/userResolvers";
-import { expenseResolvers } from "./resolvers/expenseResolvers";
-import { categoryResolvers } from "./resolvers/categoryResolvers";
-import { subcategoryResolvers } from "./resolvers/subcategoryResolvers";
-import { savingGoalResolvers } from "./resolvers/savingGoalResolvers";
-import { contextFactory } from "./context";
+import lodash from "lodash";
+const { merge } = lodash;
+import { userTypeDefs } from "./schemas/userSchemas.js";
+import { expenseTypeDefs } from "./schemas/expenseSchemas.js";
+import { categoryTypeDefs } from "./schemas/categorySchemas.js";
+import { subcategoryTypeDefs } from "./schemas/subcategorySchemas.js";
+import { savingGoalTypeDefs } from "./schemas/savingGoalSchemas.js";
+import { userResolvers } from "./resolvers/userResolvers.js";
+import { expenseResolvers } from "./resolvers/expenseResolvers.js";
+import { categoryResolvers } from "./resolvers/categoryResolvers.js";
+import { subcategoryResolvers } from "./resolvers/subcategoryResolvers.js";
+import { savingGoalResolvers } from "./resolvers/savingGoalResolvers.js";
+import { contextFactory } from "./context.js";
 
 Sentry.init({
   dsn: "https://5afc1975164a2c5f1f04878cf842a565@o4506037007810560.ingest.sentry.io/4506039360815104",
@@ -43,6 +45,8 @@ const Query = `
 `;
 const resolvers = {};
 
+// The ApolloServer constructor requires two parameters: your schema
+// definition and your set of resolvers.
 const server = new ApolloServer({
   // cors: false,
   cors: corsOptions,
@@ -63,9 +67,18 @@ const server = new ApolloServer({
     savingGoalTypeDefs,
   ],
   // csrfPrevention: true,
-  context: ({ req }) => contextFactory(req),
+  // context: ({ req }) => contextFactory(req),
 });
 
-server.listen({ port }, () =>
-  console.log(`Server runs at: http://localhost:${port}`)
-);
+// Passing an ApolloServer instance to the `startStandaloneServer` function:
+//  1. creates an Express app
+//  2. installs your ApolloServer instance as middleware
+//  3. prepares your app to handle incoming requests
+const { url } = await startStandaloneServer(server, {
+  listen: { port },
+  context: async ({ req }) => {
+    return contextFactory(req);
+  },
+});
+
+console.log(`🚀  Server ready at: ${url}`);

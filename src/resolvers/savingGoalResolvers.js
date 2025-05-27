@@ -1,4 +1,4 @@
-import { ensureAuthenticated, notFoundError } from "../utils";
+import { ensureAuthenticated, notFoundError } from "../utils.js";
 
 export const savingGoalResolvers = {
   Query: {

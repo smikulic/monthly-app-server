@@ -1,4 +1,5 @@
-import { verify } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
+const { verify } = jwt;
 import "dotenv/config";
 
 export async function authenticateUser(prisma, req) {
