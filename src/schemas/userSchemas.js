@@ -34,5 +34,7 @@ export const userTypeDefs = `
     resetPasswordRequest(email: String!): PasswordResetRequestPayload!
     resetPassword(token: String!, password: String!): User!
     updateUser(id: ID!, currency: String!): User!
+    # Deletes the currently-authenticated user and all their data.
+    deleteAccount: Boolean!
   }
 `;
