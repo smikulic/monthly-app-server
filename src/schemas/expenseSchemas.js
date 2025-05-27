@@ -8,9 +8,20 @@ export const expenseTypeDefs = gql`
     amount: Int!
   }
 
+  type CategoryExpenseTotal {
+    categoryName: String!
+    subcategoryName: String!
+    total: Int!
+  }
+
+  type ChartExpensesPayload {
+    monthlyTotals: [Int!]!
+    categoryExpenseTotals: [CategoryExpenseTotal!]!
+  }
+
   extend type Query {
     expenses(filter: ExpenseFilterInput): [Expense!]!
-    chartExpenses(filter: ExpenseFilterInput): [Int!]!
+    chartExpenses(filter: ExpenseFilterInput): ChartExpensesPayload!
   }
 
   extend type Mutation {

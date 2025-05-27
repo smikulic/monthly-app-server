@@ -58,8 +58,13 @@ export const expenseResolvers = {
             lte: endDate,
           },
         },
-        include: {
-          user: true,
+        // include: {
+        //   user: true,
+        // },
+        select: {
+          amount: true,
+          date: true,
+          subcategoryId: true,
         },
       });
 
@@ -71,7 +76,36 @@ export const expenseResolvers = {
         monthlyTotals[month] += expense.amount;
       });
 
-      return monthlyTotals;
+      // do a prisma.groupBy to get sums per subcategory
+      const grouped = await context.prisma.expense.groupBy({
+        by: ["subcategoryId"],
+        where: {
+          userId: context.currentUser.id,
+          date: { gte: startDate, lte: endDate },
+        },
+        _sum: { amount: true },
+      });
+
+      // fetch the corresponding subcategories + their parent categories in one go
+      const subcategoryIds = grouped.map((g) => g.subcategoryId);
+      const subcats = await context.prisma.subcategory.findMany({
+        where: { id: { in: subcategoryIds } },
+        include: { category: true },
+      });
+
+      // 5) stitch them together into your “pie‐slice” shape
+      const categoryExpenseTotals = grouped.map((g) => {
+        const sub = subcats.find((s) => s.id === g.subcategoryId);
+        return {
+          categoryName: sub.category.name,
+          subcategoryName: sub.name,
+          total: g._sum.amount || 0,
+        };
+      });
+
+      return { monthlyTotals, categoryExpenseTotals };
+
+      // return monthlyTotals;
     },
   },
   Mutation: {
