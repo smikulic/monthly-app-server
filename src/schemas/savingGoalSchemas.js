@@ -1,6 +1,4 @@
-import { gql } from "apollo-server";
-
-export const savingGoalTypeDefs = gql`
+export const savingGoalTypeDefs = `
   type SavingGoal {
     id: ID!
     createdAt: String!

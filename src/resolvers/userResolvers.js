@@ -1,8 +1,8 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import "dotenv/config";
-import { ensureAuthenticated, notFoundError } from "../utils";
-var postmark = require("postmark");
+import { ensureAuthenticated, notFoundError } from "../utils.js";
+import postmark from "postmark";
 
 let client = new postmark.ServerClient(process.env.POSTMARK_API_KEY);
 

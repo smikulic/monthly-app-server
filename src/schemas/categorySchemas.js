@@ -1,6 +1,4 @@
-import { gql } from "apollo-server";
-
-export const categoryTypeDefs = gql`
+export const categoryTypeDefs = `
   type Category {
     id: ID!
     name: String!
