@@ -26,6 +26,7 @@ export const userTypeDefs = `
     users: [User!]!
     user(id: ID!): User!
     me: User!
+    generateReport(year: Int!): String!
   }
 
   extend type Mutation {
