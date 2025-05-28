@@ -14,6 +14,9 @@ export const ensureAuthenticated = (currentUser) => {
   if (currentUser === null) {
     throw new Error("Unauthenticated!");
   }
+  if (!currentUser.emailConfirmed) {
+    throw new Error("Please confirm your email before continuing");
+  }
 };
 
 export const notFoundError = (resource) => {

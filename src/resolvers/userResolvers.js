@@ -30,10 +30,55 @@ export const userResolvers = {
         data: { ...args, password },
       });
 
-      const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET);
+      const confirmToken = jwt.sign(
+        { userId: user.id },
+        process.env.JWT_SECRET,
+        { expiresIn: "24h" }
+      );
+
+      await client.sendEmailWithTemplate({
+        From: "support@yourmonthly.app",
+        To: user.email,
+        TemplateAlias: "email-confirmation",
+        TemplateModel: {
+          product_name: "Monthly App",
+          action_url: `https://yourmonthly.app/confirm-email?token=${confirmToken}`,
+          support_url: "support@yourmonthly.app",
+        },
+        MessageStream: "outbound",
+      });
+      console.log(
+        `Confirmation email sent to ${user.email} and confirmToken ${confirmToken}`
+      );
+
+      // const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET);
 
       return {
-        token,
+        token: null, // user can’t log in until they confirm
+        user,
+      };
+    },
+    confirmEmail: async (parent, { token }, context) => {
+      // 1) verify the confirmation JWT
+      let payload;
+      try {
+        payload = jwt.verify(token, process.env.JWT_SECRET);
+      } catch (e) {
+        throw new Error("Invalid or expired confirmation link");
+      }
+
+      const userId = payload.userId;
+      // 2) flip the flag in the database
+      const user = await context.prisma.user.update({
+        where: { id: userId },
+        data: { emailConfirmed: true },
+      });
+
+      // 3) now they’re “activated” → issue a real auth token
+      const authToken = jwt.sign({ userId }, process.env.JWT_SECRET);
+
+      return {
+        token: authToken,
         user,
       };
     },
@@ -46,6 +91,11 @@ export const userResolvers = {
       const valid = await bcrypt.compare(args.password, user.password);
       if (!valid) {
         throw new Error("Invalid password");
+      }
+
+      if (!user.emailConfirmed) {
+        // stop login here if they haven’t confirmed yet
+        throw new Error("Please confirm your email before logging in");
       }
 
       const token = jwt.sign({ userId: user.id }, process.env.JWT_SECRET);

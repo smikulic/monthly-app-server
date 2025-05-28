@@ -30,6 +30,7 @@ export const userTypeDefs = `
 
   extend type Mutation {
     signup(email: String!, password: String!): AuthPayload
+    confirmEmail(token: String!): AuthPayload!
     login(email: String!, password: String!): AuthPayload
     resetPasswordRequest(email: String!): PasswordResetRequestPayload!
     resetPassword(token: String!, password: String!): User!
