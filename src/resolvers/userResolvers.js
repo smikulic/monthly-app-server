@@ -1,8 +1,10 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import PDFDocument from "pdfkit";
+import { WritableStreamBuffer } from "stream-buffers";
+import postmark from "postmark";
 import "dotenv/config";
 import { ensureAuthenticated, notFoundError } from "../utils.js";
-import postmark from "postmark";
 
 let client = new postmark.ServerClient(process.env.POSTMARK_API_KEY);
 
@@ -21,6 +23,149 @@ export const userResolvers = {
 
       return context.currentUser;
     },
+    generateReport: async (parent, { year }, context) => {
+      ensureAuthenticated(context.currentUser);
+
+      const { prisma, currentUser } = context;
+
+      const userId = currentUser.id;
+
+      // ————————— Data Aggregation (unchanged) —————————
+      const start = new Date(year, 0, 1),
+        end = new Date(year + 1, 0, 1);
+
+      // 1) Monthly expenses
+      const expenses = await prisma.expense.findMany({
+        where: { userId, date: { gte: start, lt: end } },
+        select: { date: true, amount: true },
+      });
+      const monthlyExpenses = Array(12).fill(0);
+      expenses.forEach(({ date, amount }) => {
+        const m = date.getMonth(); // 0 = Jan, 11 = Dec
+        monthlyExpenses[m] += amount; // accumulate every expense in its month
+      });
+
+      // 2) Monthly budget
+      const subs = await prisma.subcategory.findMany({
+        where: { category: { userId } },
+        select: { budgetAmount: true },
+      });
+      const totalMonthlyBudget = subs.reduce(
+        (sum, s) => sum + s.budgetAmount,
+        0
+      );
+      const monthlyBudgets = Array(12).fill(totalMonthlyBudget);
+
+      // 3) Category breakdown
+      const rawCat = await prisma.expense.groupBy({
+        by: ["subcategoryId"],
+        where: { userId, date: { gte: start, lt: end } },
+        _sum: { amount: true },
+      });
+      const catMap = {};
+      await Promise.all(
+        rawCat.map(async (r) => {
+          const sub = await prisma.subcategory.findUnique({
+            where: { id: r.subcategoryId },
+            select: {
+              name: true,
+              budgetAmount: true,
+              category: { select: { name: true } },
+            },
+          });
+          catMap[`${sub.category.name} / ${sub.name}`] = {
+            spent: r._sum.amount ?? 0,
+            budget: sub.budgetAmount,
+          };
+        })
+      );
+
+      // ————————— PDF Generation —————————
+      return await new Promise((resolve, reject) => {
+        try {
+          const doc = new PDFDocument({ size: "A4", margin: 40 });
+          const stream = new WritableStreamBuffer({
+            initialSize: 100 * 1024,
+            incrementAmount: 10 * 1024,
+          });
+          doc.pipe(stream);
+
+          // — Header Bar —
+          const pageWidth =
+            doc.page.width - doc.page.margins.left - doc.page.margins.right;
+          doc.rect(doc.x, doc.y - 8, pageWidth, 30).fill("#277bc0");
+          doc
+            .fillColor("#ffffff")
+            .fontSize(18)
+            .font("Helvetica-Bold")
+            .text(`MonthlyApp - Budget Report — ${year}`, {
+              align: "center",
+              valign: "center",
+              lineGap: 6,
+            });
+          doc.moveDown(2);
+          doc.fillColor("#000000"); // reset for body
+
+          // — Overview —
+          const totalExp = monthlyExpenses.reduce(
+            (sum, monthVal) => sum + monthVal,
+            0
+          );
+          const totalBud = monthlyBudgets.reduce((a, b) => a + b, 0);
+          const pctUsed = ((totalExp / totalBud) * 100).toFixed(1);
+          doc
+            .fontSize(12)
+            .font("Helvetica")
+            .text(`Total Spent:`, 50, doc.y, { continued: true })
+            .font("Helvetica-Bold")
+            .text(` ${totalExp}€`, { continued: true })
+            .font("Helvetica")
+            .text(`   |   Total Budget:`, { continued: true })
+            .font("Helvetica-Bold")
+            .text(` ${totalBud}€`, { continued: true })
+            .font("Helvetica")
+            .text(`   |   Used:`, { continued: true })
+            .font("Helvetica-Bold")
+            .text(` ${pctUsed}%`);
+          doc.moveDown(1.5);
+
+          // — Category Breakdown —
+          // doc.addPage();
+          const rowHeight = 20;
+          doc.fontSize(14).font("Helvetica-Bold").text("Category Breakdown");
+          doc.moveDown(0.5);
+          doc.fontSize(10).font("Helvetica");
+          Object.entries(catMap).forEach(([cat, { spent, budget }], idx) => {
+            const y = doc.y;
+            if (idx % 2 === 0) {
+              doc
+                .rect(50, y, pageWidth, rowHeight)
+                .fill("#f5f5f5")
+                .fillColor("#000");
+            }
+            doc
+              .text(cat, 55, y + 5, { width: 200 })
+              .text(`${spent}€`, 265, y + 5)
+              .text(`${budget}€`, 345, y + 5)
+              .text(`${budget - spent}€`, 425, y + 5);
+            doc.moveDown(1);
+          });
+          doc.fillColor("#000");
+          doc.moveDown(1);
+
+          // Finalize
+          doc.end();
+          stream.on("finish", () => {
+            const b64 = stream.getContentsAsString("base64");
+            if (!b64) return reject(new Error("PDF generation failed"));
+            resolve(b64);
+          });
+          stream.on("error", (err) => reject(err));
+        } catch (err) {
+          reject(err);
+        }
+      });
+    },
   },
   Mutation: {
     signup: async (parent, args, context) => {
@@ -35,24 +180,6 @@ export const userResolvers = {
         process.env.JWT_SECRET,
         { expiresIn: "24h" }
       );
-
-      // try {
-      //   const res = await client.sendEmailWithTemplate({
-      //     From: "support@yourmonthly.app",
-      //     To: user.email,
-      //     TemplateAlias: "email-confirmation",
-      //     TemplateModel: {
-      //       product_name: "Monthly App",
-      //       action_url: `https://yourmonthly.app/confirm-email?token=${confirmToken}`,
-      //       support_url: "support@yourmonthly.app",
-      //     },
-      //     MessageStream: "outbound",
-      //   });
-      //   console.log("Postmark send response:", res);
-      // } catch (err) {
-      //   console.error("Postmark error:", err);
-      //   throw new Error("Failed to send confirmation email. Please try again.");
-      // }
 
       client.sendEmailWithTemplate({
         From: "support@yourmonthly.app",

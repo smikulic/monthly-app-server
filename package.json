@@ -25,7 +25,9 @@
     "graphql": "^16.11.0",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
-    "postmark": "^4.0.5"
+    "pdfkit": "^0.17.1",
+    "postmark": "^4.0.5",
+    "stream-buffers": "^3.0.3"
   },
   "devDependencies": {
     "nodemon": "^3.1.10",
