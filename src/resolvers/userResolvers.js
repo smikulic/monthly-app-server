@@ -60,7 +60,7 @@ export const userResolvers = {
         TemplateAlias: "email-confirmation",
         TemplateModel: {
           product_name: "Monthly App",
-          action_url: `https://yourmonthly.app/confirm-email?token=${confirmToken}`,
+          action_url: `https://app.yourmonthly.app/confirm-email?token=${confirmToken}`,
           support_url: "support@yourmonthly.app",
         },
         MessageStream: "outbound",
