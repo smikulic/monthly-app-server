@@ -36,7 +36,25 @@ export const userResolvers = {
         { expiresIn: "24h" }
       );
 
-      await client.sendEmailWithTemplate({
+      // try {
+      //   const res = await client.sendEmailWithTemplate({
+      //     From: "support@yourmonthly.app",
+      //     To: user.email,
+      //     TemplateAlias: "email-confirmation",
+      //     TemplateModel: {
+      //       product_name: "Monthly App",
+      //       action_url: `https://yourmonthly.app/confirm-email?token=${confirmToken}`,
+      //       support_url: "support@yourmonthly.app",
+      //     },
+      //     MessageStream: "outbound",
+      //   });
+      //   console.log("Postmark send response:", res);
+      // } catch (err) {
+      //   console.error("Postmark error:", err);
+      //   throw new Error("Failed to send confirmation email. Please try again.");
+      // }
+
+      client.sendEmailWithTemplate({
         From: "support@yourmonthly.app",
         To: user.email,
         TemplateAlias: "email-confirmation",
