@@ -1,8 +1,11 @@
+import OpenAI from "openai";
 import {
   getFilterDateRange,
   ensureAuthenticated,
   notFoundError,
 } from "../utils.js";
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 export const expenseResolvers = {
   Query: {
@@ -104,8 +107,117 @@ export const expenseResolvers = {
       });
 
       return { monthlyTotals, categoryExpenseTotals };
+    },
+    yearlyInsight: async (parent, args, context) => {
+      ensureAuthenticated(context.currentUser);
 
-      // return monthlyTotals;
+      const filterDate = args.filter.date;
+      const filterDateYear = new Date(filterDate).getFullYear();
+
+      const startDate = new Date(`${filterDateYear}-01-01`);
+      const endDate = new Date(`${filterDateYear}-12-31`);
+
+      // 2) Fetch all expenses in that year
+      const expenses = await context.prisma.expense.findMany({
+        where: {
+          userId: context.currentUser.id,
+          date: { gte: startDate, lte: endDate },
+        },
+        select: { amount: true, date: true, subcategoryId: true },
+      });
+
+      const total = expenses.reduce((sum, e) => sum + e.amount, 0);
+
+      const monthlyTotals = Array(12).fill(0);
+      expenses.forEach(({ date, amount }) => {
+        monthlyTotals[date.getMonth()] += amount;
+      });
+      const forecastTotal = monthlyTotals.reduce((a, b) => a + b, 0);
+
+      // 2) build a prompt with those figures
+      const breakdownLines = await Promise.all(
+        expenses.map(async (e) => {
+          const sub = await context.prisma.subcategory.findUnique({
+            where: { id: e.subcategoryId },
+            include: { category: true },
+          });
+          return `– ${sub.category.name}/${sub.name}: ${e.amount}€`;
+        })
+      );
+
+      const monthlyLine = monthlyTotals.map((m) => `${m}€`).join(", ");
+
+      const yearlyPrompt = `
+      You are a budgeting assistant. Here are the numbers for ${filterDateYear}:
+      Total spent: ${total}€.
+      Breakdown:
+      ${breakdownLines.join("\n")}
+
+            Write a 2–3 sentence summary highlighting the biggest over- or under-spends and any trends.
+      `;
+
+      const forecastPrompt = `
+      You are a budgeting assistant. Given the data for ${filterDateYear}:
+      • Monthly totals (Jan→Dec): ${monthlyLine}
+      • Yearly total: ${forecastTotal}€
+      Write a 2–3 sentence forecast for next year’s spending based on the current run rate (i.e. average monthly spending × 12) and call out any categories likely to exceed budget if trends continue.
+            `.trim();
+
+      console.log({ yearlyPrompt });
+
+      // 3) call ChatGPT
+      // const chat = await openai.chat.completions.create({
+      //   model: "gpt-4.1-nano",
+      //   store: true,
+      //   messages: [{ role: "user", content: yearlyPrompt }],
+      //   max_tokens: 150,
+      //   temperature: 0.7,
+      // });
+
+      const [yearlyRes, forecastRes] = await Promise.all([
+        openai.chat.completions.create({
+          model: "gpt-4.1-nano",
+          store: true,
+          messages: [{ role: "user", content: yearlyPrompt }],
+          max_tokens: 150,
+          temperature: 0.7,
+        }),
+        openai.chat.completions.create({
+          model: "gpt-4.1-nano",
+          store: true,
+          messages: [{ role: "user", content: forecastPrompt }],
+          max_tokens: 150,
+          temperature: 0.7,
+        }),
+      ]);
+
+      const yearlyNarrative = yearlyRes.choices[0].message.content.trim();
+      const forecastNarrative = forecastRes.choices[0].message.content.trim();
+      // const narrative = chat.choices[0].message.content.trim();
+      // console.log({ narrative });
+
+      // 4) return both the narrative and the raw series if you want to chart it
+      return {
+        yearly: {
+          title: `Yearly Summary: ${filterDateYear}`,
+          narrative: yearlyNarrative,
+          data: {},
+        },
+        forecast: {
+          title: `Forecast for ${filterDateYear + 1}`,
+          narrative: forecastNarrative,
+          data: {},
+        },
+        // title: `Yearly Summary: ${filterDateYear}`,
+        // narrative,
+        // data: {
+        //   total,
+        //   breakdown: expenses.map((e, i) => ({
+        //     label: breakdownLines[i].split(":")[0].replace("– ", ""),
+        //     value: e.amount,
+        //   })),
+        // },
+      };
     },
   },
   Mutation: {
