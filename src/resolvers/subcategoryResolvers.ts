@@ -4,12 +4,14 @@ import { secured } from "../utils/secured.js";
 
 export const subcategoryResolvers = {
   Query: {
-    subcategory: secured((parent, args, context) => {
-      const subcategoryResponse = context.prisma.subcategory.findFirst({
+    subcategory: secured(async (parent, args, context) => {
+      const subcategoryResponse = await context.prisma.subcategory.findFirst({
         where: { id: args.id },
       });
 
-      if (!subcategoryResponse) notFoundError("Subcategory");
+      if (!subcategoryResponse) {
+        notFoundError("Subcategory");
+      }
 
       return subcategoryResponse;
     }),
