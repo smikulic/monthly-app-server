@@ -24,4 +24,4 @@ jobs:
         run: yarn test
 
       - name: Build
-        run: yarn build
+        run: yarn build:tsc
