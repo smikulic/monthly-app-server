@@ -1,5 +1,5 @@
 import { GraphQLResolveInfo } from "graphql";
-import { User } from "./secured";
+import { User } from "./secured.js";
 
 export const ensureAuthenticated = (currentUser: User | null) => {
   if (currentUser === null) {

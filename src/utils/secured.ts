@@ -1,7 +1,7 @@
 import { GraphQLResolveInfo } from "graphql";
 import { PrismaClient } from "@prisma/client";
-import { withErrorHandle } from "./withErrorHandle";
-import { withAuth } from "./withAuth";
+import { withErrorHandle } from "./withErrorHandle.js";
+import { withAuth } from "./withAuth.js";
 
 export interface User {
   id: string;

@@ -1,5 +1,5 @@
-import { notFoundError } from "../utils/notFoundError";
-import { secured } from "../utils/secured";
+import { notFoundError } from "../utils/notFoundError.js";
+import { secured } from "../utils/secured.js";
 
 export const categoryResolvers = {
   Query: {

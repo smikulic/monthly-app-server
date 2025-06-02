@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { IncomingMessage } from "http";
-import { authenticateUser } from "./authenticateUser";
+import { authenticateUser } from "./authenticateUser.js";
 
 const prisma = new PrismaClient();
 

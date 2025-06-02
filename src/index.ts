@@ -4,17 +4,17 @@ import * as Sentry from "@sentry/node";
 import { ProfilingIntegration } from "@sentry/profiling-node";
 import lodash from "lodash";
 const { merge } = lodash;
-import { userTypeDefs } from "./schemas/userSchemas";
-import { expenseTypeDefs } from "./schemas/expenseSchemas";
-import { categoryTypeDefs } from "./schemas/categorySchemas";
-import { subcategoryTypeDefs } from "./schemas/subcategorySchemas";
-import { savingGoalTypeDefs } from "./schemas/savingGoalSchemas";
-import { userResolvers } from "./resolvers/userResolvers";
-import { expenseResolvers } from "./resolvers/expenseResolvers";
-import { categoryResolvers } from "./resolvers/categoryResolvers";
-import { subcategoryResolvers } from "./resolvers/subcategoryResolvers";
-import { savingGoalResolvers } from "./resolvers/savingGoalResolvers";
-import { contextFactory } from "./context";
+import { userTypeDefs } from "./schemas/userSchemas.js";
+import { expenseTypeDefs } from "./schemas/expenseSchemas.js";
+import { categoryTypeDefs } from "./schemas/categorySchemas.js";
+import { subcategoryTypeDefs } from "./schemas/subcategorySchemas.js";
+import { savingGoalTypeDefs } from "./schemas/savingGoalSchemas.js";
+import { userResolvers } from "./resolvers/userResolvers.js";
+import { expenseResolvers } from "./resolvers/expenseResolvers.js";
+import { categoryResolvers } from "./resolvers/categoryResolvers.js";
+import { subcategoryResolvers } from "./resolvers/subcategoryResolvers.js";
+import { savingGoalResolvers } from "./resolvers/savingGoalResolvers.js";
+import { contextFactory } from "./context.js";
 
 Sentry.init({
   dsn: "https://5afc1975164a2c5f1f04878cf842a565@o4506037007810560.ingest.sentry.io/4506039360815104",

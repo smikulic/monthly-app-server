@@ -1,6 +1,6 @@
-import { notFoundError } from "../utils/notFoundError";
-import { getFilterDateRange } from "../utils/getFilterDateRange";
-import { secured } from "../utils/secured";
+import { notFoundError } from "../utils/notFoundError.js";
+import { getFilterDateRange } from "../utils/getFilterDateRange.js";
+import { secured } from "../utils/secured.js";
 
 export const subcategoryResolvers = {
   Query: {

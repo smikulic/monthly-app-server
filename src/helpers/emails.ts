@@ -1,6 +1,6 @@
 import postmark from "postmark";
 import { User as PrismaUser } from "@prisma/client";
-import { POSTMARK_API_KEY } from "../constants";
+import { POSTMARK_API_KEY } from "../constants.js";
 
 // Postmark client for sending emails
 const postmarkClient = new postmark.ServerClient(POSTMARK_API_KEY);

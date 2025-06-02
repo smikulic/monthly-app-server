@@ -1,15 +1,15 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import "dotenv/config";
-import { JWT_SECRET } from "../constants";
-import { notFoundError } from "../utils/notFoundError";
-import { secured } from "../utils/secured";
-import { JwtPayload } from "../authenticateUser";
+import { JWT_SECRET } from "../constants.js";
+import { notFoundError } from "../utils/notFoundError.js";
+import { secured } from "../utils/secured.js";
+import { JwtPayload } from "../authenticateUser.js";
 import {
   sendConfirmationEmail,
   sendPasswordResetEmail,
-} from "../helpers/emails";
-import { generateBudgetReportPdf } from "../helpers/reports";
+} from "../helpers/emails.js";
+import { generateBudgetReportPdf } from "../helpers/reports.js";
 
 export const userResolvers = {
   Query: {
