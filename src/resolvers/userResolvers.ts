@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import "dotenv/config";
-import { JWT_SECRET } from "../constants.js";
+import { JWT_SECRET } from "../config/constants.js";
 import { notFoundError } from "../utils/notFoundError.js";
 import { secured } from "../utils/secured.js";
 import { JwtPayload } from "../authenticateUser.js";

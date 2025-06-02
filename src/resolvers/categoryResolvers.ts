@@ -15,12 +15,14 @@ export const categoryResolvers = {
       });
       return categoriesResponse;
     }),
-    category: secured((parent, args, context) => {
-      const categoryResponse = context.prisma.category.findFirst({
+    category: secured(async (parent, args, context) => {
+      const categoryResponse = await context.prisma.category.findFirst({
         where: { id: args.id },
       });
 
-      if (!categoryResponse) notFoundError("Category");
+      if (!categoryResponse) {
+        notFoundError("Category");
+      }
 
       return categoryResponse;
     }),
