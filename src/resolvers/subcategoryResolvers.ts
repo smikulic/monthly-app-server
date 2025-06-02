@@ -1,12 +1,10 @@
-import {
-  getFilterDateRange,
-  ensureAuthenticated,
-  notFoundError,
-} from "../utils.js";
+import { notFoundError } from "../utils/notFoundError";
+import { getFilterDateRange } from "../utils/getFilterDateRange";
+import { secured } from "../utils/secured";
 
 export const subcategoryResolvers = {
   Query: {
-    subcategory: (parent, args, context) => {
+    subcategory: secured((parent, args, context) => {
       const subcategoryResponse = context.prisma.subcategory.findFirst({
         where: { id: args.id },
       });
@@ -14,12 +12,10 @@ export const subcategoryResolvers = {
       if (!subcategoryResponse) notFoundError("Subcategory");
 
       return subcategoryResponse;
-    },
+    }),
   },
   Mutation: {
-    createSubcategory: async (parent, args, context) => {
-      ensureAuthenticated(context.currentUser);
-
+    createSubcategory: secured(async (parent, args, context) => {
       return await context.prisma.subcategory.create({
         data: {
           name: args.name,
@@ -29,10 +25,8 @@ export const subcategoryResolvers = {
           category: { connect: { id: args.categoryId } },
         },
       });
-    },
-    updateSubcategory: async (parent, args, context) => {
-      ensureAuthenticated(context.currentUser);
-
+    }),
+    updateSubcategory: secured(async (parent, args, context) => {
       return await context.prisma.subcategory.update({
         where: {
           id: args.id,
@@ -44,10 +38,8 @@ export const subcategoryResolvers = {
           rolloverDate: new Date(args.rolloverDate).toISOString(),
         },
       });
-    },
-    deleteSubcategory: async (parent, args, context) => {
-      ensureAuthenticated(context.currentUser);
-
+    }),
+    deleteSubcategory: secured(async (parent, args, context) => {
       const deleteSubcategoryResponse = await context.prisma.subcategory.delete(
         {
           where: {
@@ -59,10 +51,10 @@ export const subcategoryResolvers = {
       if (!deleteSubcategoryResponse) notFoundError("Subcategory");
 
       return deleteSubcategoryResponse;
-    },
+    }),
   },
   Subcategory: {
-    expenses: (parent, args, context) => {
+    expenses: secured((parent, args, context) => {
       const filterDate = args.filter.date;
       const filterDateRange = getFilterDateRange(filterDate);
 
@@ -77,6 +69,6 @@ export const subcategoryResolvers = {
       });
 
       return expensesResponse;
-    },
+    }),
   },
 };

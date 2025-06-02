@@ -6,11 +6,11 @@
   },
   "description": "API for yourmonthly.app",
   "type": "module",
-  "main": "start.js",
   "scripts": {
     "prisma-studio": "npx prisma studio",
-    "build": "prisma generate && prisma migrate deploy",
-    "start": "nodemon ./start.js"
+    "build": "prisma generate && prisma migrate deploy && tsc",
+    "dev": "tsx src/start.ts",
+    "start": "node dist/start.js"
   },
   "keywords": [],
   "author": "Sinisa Mikulic",
@@ -30,7 +30,20 @@
     "stream-buffers": "^3.0.3"
   },
   "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/graphql": "^14.2.3",
+    "@types/jsonwebtoken": "^9.0.9",
+    "@types/lodash": "^4.17.17",
+    "@types/node": "^22.15.29",
+    "@types/pdfkit": "^0.13.9",
+    "@types/stream-buffers": "^3.0.7",
+    "@typescript-eslint/eslint-plugin": "^8.33.0",
+    "@typescript-eslint/parser": "^8.33.0",
+    "eslint": "^9.28.0",
     "nodemon": "^3.1.10",
-    "prisma": "^4.16.2"
+    "prisma": "^4.16.2",
+    "ts-node-dev": "^2.0.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
   }
 }

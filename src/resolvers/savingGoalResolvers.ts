@@ -1,8 +1,9 @@
-import { ensureAuthenticated, notFoundError } from "../utils.js";
+import { notFoundError } from "../utils/notFoundError";
+import { secured } from "../utils/secured";
 
 export const savingGoalResolvers = {
   Query: {
-    savingGoals: (parent, args, context) => {
+    savingGoals: secured((parent, args, context) => {
       const savingGoalsResponse = context.prisma.savingGoal.findMany({
         where: { userId: context.currentUser.id },
         include: {
@@ -13,12 +14,10 @@ export const savingGoalResolvers = {
         },
       });
       return savingGoalsResponse;
-    },
+    }),
   },
   Mutation: {
-    createSavingGoal: async (parent, args, context) => {
-      ensureAuthenticated(context.currentUser);
-
+    createSavingGoal: secured(async (parent, args, context) => {
       return await context.prisma.savingGoal.create({
         data: {
           name: args.name,
@@ -28,10 +27,8 @@ export const savingGoalResolvers = {
           user: { connect: { id: context.currentUser.id } },
         },
       });
-    },
-    updateSavingGoal: async (parent, args, context) => {
-      ensureAuthenticated(context.currentUser);
-
+    }),
+    updateSavingGoal: secured(async (parent, args, context) => {
       return await context.prisma.savingGoal.update({
         where: {
           id: args.id,
@@ -43,10 +40,8 @@ export const savingGoalResolvers = {
           initialSaveAmount: args.initialSaveAmount,
         },
       });
-    },
-    deleteSavingGoal: async (parent, args, context) => {
-      ensureAuthenticated(context.currentUser);
-
+    }),
+    deleteSavingGoal: secured(async (parent, args, context) => {
       const deleteSavingGoalResponse = await context.prisma.savingGoal.delete({
         where: {
           id: args.id,
@@ -56,6 +51,6 @@ export const savingGoalResolvers = {
       if (!deleteSavingGoalResponse) notFoundError("Saving Goal");
 
       return deleteSavingGoalResponse;
-    },
+    }),
   },
 };

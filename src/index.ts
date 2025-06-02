@@ -4,17 +4,17 @@ import * as Sentry from "@sentry/node";
 import { ProfilingIntegration } from "@sentry/profiling-node";
 import lodash from "lodash";
 const { merge } = lodash;
-import { userTypeDefs } from "./schemas/userSchemas.js";
-import { expenseTypeDefs } from "./schemas/expenseSchemas.js";
-import { categoryTypeDefs } from "./schemas/categorySchemas.js";
-import { subcategoryTypeDefs } from "./schemas/subcategorySchemas.js";
-import { savingGoalTypeDefs } from "./schemas/savingGoalSchemas.js";
-import { userResolvers } from "./resolvers/userResolvers.js";
-import { expenseResolvers } from "./resolvers/expenseResolvers.js";
-import { categoryResolvers } from "./resolvers/categoryResolvers.js";
-import { subcategoryResolvers } from "./resolvers/subcategoryResolvers.js";
-import { savingGoalResolvers } from "./resolvers/savingGoalResolvers.js";
-import { contextFactory } from "./context.js";
+import { userTypeDefs } from "./schemas/userSchemas";
+import { expenseTypeDefs } from "./schemas/expenseSchemas";
+import { categoryTypeDefs } from "./schemas/categorySchemas";
+import { subcategoryTypeDefs } from "./schemas/subcategorySchemas";
+import { savingGoalTypeDefs } from "./schemas/savingGoalSchemas";
+import { userResolvers } from "./resolvers/userResolvers";
+import { expenseResolvers } from "./resolvers/expenseResolvers";
+import { categoryResolvers } from "./resolvers/categoryResolvers";
+import { subcategoryResolvers } from "./resolvers/subcategoryResolvers";
+import { savingGoalResolvers } from "./resolvers/savingGoalResolvers";
+import { contextFactory } from "./context";
 
 Sentry.init({
   dsn: "https://5afc1975164a2c5f1f04878cf842a565@o4506037007810560.ingest.sentry.io/4506039360815104",
@@ -25,15 +25,15 @@ Sentry.init({
   profilesSampleRate: 0.5, // Capture 100% of the transactions, reduce in production!
 });
 
-const port = process.env.PORT || 3001;
+const port = process.env.PORT ? Number(process.env.PORT) : 3001;
 
-var corsOptions = {
-  origin: "*",
-  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-  preflightContinue: false,
-  optionsSuccessStatus: 204,
-  // credentials: true
-};
+// var corsOptions = {
+//   origin: "*",
+//   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+//   preflightContinue: false,
+//   optionsSuccessStatus: 204,
+//   // credentials: true
+// };
 
 const Query = `
   type Query {
@@ -49,7 +49,7 @@ const resolvers = {};
 // definition and your set of resolvers.
 const server = new ApolloServer({
   // cors: false,
-  cors: corsOptions,
+  // cors: corsOptions,
   resolvers: merge(
     resolvers,
     userResolvers,
@@ -77,7 +77,12 @@ const server = new ApolloServer({
 const { url } = await startStandaloneServer(server, {
   listen: { port },
   context: async ({ req }) => {
-    return contextFactory(req);
+    // Convert headers to Record<string, string | undefined>
+    const normalizedHeaders: Record<string, string | undefined> = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+      normalizedHeaders[key] = Array.isArray(value) ? value.join(",") : value;
+    }
+    return contextFactory(Object.assign(req, { headers: normalizedHeaders }));
   },
 });
 

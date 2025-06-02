@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    /* Basic Options */
+    "target": "ES2020", // Modern enough for Node 16+
+    "module": "ESNext", // Keep using ES module syntax
+    "moduleResolution": "Node", // Use Node’s module resolution
+    "outDir": "dist", // Where compiled JS files go
+    "rootDir": "src", // Your TypeScript source folder
+    "strict": true, // Enable strict type‐checking
+    "esModuleInterop": true, // Allow default imports from commonjs modules
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+
+    /* Enable Decorators (if you ever need them) */
+    // "experimentalDecorators": true,
+    // "emitDecoratorMetadata": true,
+
+    /* Allow JS libraries with ESM default exports */
+    "resolveJsonModule": true,
+    "allowSyntheticDefaultImports": true
+  },
+  "include": ["src/**/*"], // Only compile files under src/
+  "exclude": ["node_modules", "dist"]
+}

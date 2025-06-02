@@ -1,8 +1,9 @@
-import { ensureAuthenticated, notFoundError } from "../utils.js";
+import { notFoundError } from "../utils/notFoundError";
+import { secured } from "../utils/secured";
 
 export const categoryResolvers = {
   Query: {
-    categories: (parent, args, context) => {
+    categories: secured((parent, args, context) => {
       const categoriesResponse = context.prisma.category.findMany({
         where: { userId: context.currentUser.id },
         include: {
@@ -13,8 +14,8 @@ export const categoryResolvers = {
         },
       });
       return categoriesResponse;
-    },
-    category: (parent, args, context) => {
+    }),
+    category: secured((parent, args, context) => {
       const categoryResponse = context.prisma.category.findFirst({
         where: { id: args.id },
       });
@@ -22,12 +23,10 @@ export const categoryResolvers = {
       if (!categoryResponse) notFoundError("Category");
 
       return categoryResponse;
-    },
+    }),
   },
   Mutation: {
-    createCategory: async (parent, args, context) => {
-      ensureAuthenticated(context.currentUser);
-
+    createCategory: secured(async (parent, args, context) => {
       return await context.prisma.category.create({
         data: {
           name: args.name,
@@ -35,10 +34,8 @@ export const categoryResolvers = {
           user: { connect: { id: context.currentUser.id } },
         },
       });
-    },
-    updateCategory: async (parent, args, context) => {
-      ensureAuthenticated(context.currentUser);
-
+    }),
+    updateCategory: secured(async (parent, args, context) => {
       return await context.prisma.category.update({
         where: {
           id: args.id,
@@ -47,10 +44,8 @@ export const categoryResolvers = {
           name: args.name,
         },
       });
-    },
-    deleteCategory: async (parent, args, context) => {
-      ensureAuthenticated(context.currentUser);
-
+    }),
+    deleteCategory: secured(async (parent, args, context) => {
       const deleteCategoryResponse = await context.prisma.category.delete({
         where: {
           id: args.id,
@@ -60,10 +55,10 @@ export const categoryResolvers = {
       if (!deleteCategoryResponse) notFoundError("Category");
 
       return deleteCategoryResponse;
-    },
+    }),
   },
   Category: {
-    subcategories: (parent, args, context) => {
+    subcategories: secured((parent, args, context) => {
       const subcategoriesResponse = context.prisma.subcategory.findMany({
         where: { categoryId: parent.id },
         orderBy: {
@@ -71,6 +66,6 @@ export const categoryResolvers = {
         },
       });
       return subcategoriesResponse;
-    },
+    }),
   },
 };
