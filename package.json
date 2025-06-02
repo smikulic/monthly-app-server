@@ -13,7 +13,7 @@
     "prisma-studio": "npx prisma studio",
     "build:tsc": "tsc",
     "build": "prisma generate && prisma migrate deploy && tsc",
-    "dev": "tsx src/start.ts",
+    "dev": "tsx watch src/start.ts",
     "start": "node dist/start.js",
     "test": "jest"
   },
