@@ -25,15 +25,15 @@ Sentry.init({
   profilesSampleRate: 0.5, // Capture 100% of the transactions, reduce in production!
 });
 
-const port = process.env.PORT || 3001;
+const port = process.env.PORT ? Number(process.env.PORT) : 3001;
 
-var corsOptions = {
-  origin: "*",
-  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-  preflightContinue: false,
-  optionsSuccessStatus: 204,
-  // credentials: true
-};
+// var corsOptions = {
+//   origin: "*",
+//   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+//   preflightContinue: false,
+//   optionsSuccessStatus: 204,
+//   // credentials: true
+// };
 
 const Query = `
   type Query {
@@ -49,7 +49,7 @@ const resolvers = {};
 // definition and your set of resolvers.
 const server = new ApolloServer({
   // cors: false,
-  cors: corsOptions,
+  // cors: corsOptions,
   resolvers: merge(
     resolvers,
     userResolvers,
@@ -77,7 +77,12 @@ const server = new ApolloServer({
 const { url } = await startStandaloneServer(server, {
   listen: { port },
   context: async ({ req }) => {
-    return contextFactory(req);
+    // Convert headers to Record<string, string | undefined>
+    const normalizedHeaders: Record<string, string | undefined> = {};
+    for (const [key, value] of Object.entries(req.headers)) {
+      normalizedHeaders[key] = Array.isArray(value) ? value.join(",") : value;
+    }
+    return contextFactory(Object.assign(req, { headers: normalizedHeaders }));
   },
 });
 

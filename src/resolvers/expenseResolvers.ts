@@ -1,27 +1,12 @@
-import {
-  getFilterDateRange,
-  ensureAuthenticated,
-  notFoundError,
-} from "../utils.js";
+import { notFoundError } from "../utils/notFoundError.js";
+import { getFilterDateRange } from "../utils/getFilterDateRange.js";
+import { secured } from "../utils/secured.js";
 
 export const expenseResolvers = {
   Query: {
-    expenses: (parent, args, context) => {
-      // const filterDate = args.filter.date;
-      // const filterDateRange = getFilterDateRange(filterDate);
-
-      // const expensesResponse = context.prisma.expense.findMany({
-      //   where: { userId: context.currentUser.id, date: filterDateRange },
-      //   include: {
-      //     user: true,
-      //   },
-      //   orderBy: {
-      //     date: "asc", // or 'desc' for descending order
-      //   },
-      // });
-
+    expenses: secured((parent, args, context) => {
       // Build the base where clause with the user id.
-      const whereClause = { userId: context.currentUser.id };
+      const whereClause: any = { userId: context.currentUser.id };
 
       // Check if args.filter exists and contains a date.
       if (args.filter && args.filter.date) {
@@ -42,8 +27,8 @@ export const expenseResolvers = {
       });
 
       return expensesResponse;
-    },
-    chartExpenses: async (parent, args, context) => {
+    }),
+    chartExpenses: secured(async (parent, args, context) => {
       const filterDate = args.filter.date;
       const filterDateYear = new Date(filterDate).getFullYear();
 
@@ -97,21 +82,17 @@ export const expenseResolvers = {
       const categoryExpenseTotals = grouped.map((g) => {
         const sub = subcats.find((s) => s.id === g.subcategoryId);
         return {
-          categoryName: sub.category.name,
-          subcategoryName: sub.name,
+          categoryName: sub?.category?.name ?? "Unknown Category",
+          subcategoryName: sub?.name ?? "Unknown Subcategory",
           total: g._sum.amount || 0,
         };
       });
 
       return { monthlyTotals, categoryExpenseTotals };
-
-      // return monthlyTotals;
-    },
+    }),
   },
   Mutation: {
-    createExpense: async (parent, args, context) => {
-      ensureAuthenticated(context.currentUser);
-
+    createExpense: secured(async (parent, args, context) => {
       return await context.prisma.expense.create({
         data: {
           amount: args.amount,
@@ -120,10 +101,8 @@ export const expenseResolvers = {
           subcategory: { connect: { id: args.subcategoryId } },
         },
       });
-    },
-    updateExpense: async (parent, args, context) => {
-      ensureAuthenticated(context.currentUser);
-
+    }),
+    updateExpense: secured(async (parent, args, context) => {
       return await context.prisma.expense.update({
         where: {
           id: args.id,
@@ -134,10 +113,8 @@ export const expenseResolvers = {
           subcategory: { connect: { id: args.subcategoryId } },
         },
       });
-    },
-    deleteExpense: async (parent, args, context) => {
-      ensureAuthenticated(context.currentUser);
-
+    }),
+    deleteExpense: secured(async (parent, args, context) => {
       const deleteExpenseResponse = await context.prisma.expense.delete({
         where: {
           id: args.id,
@@ -147,6 +124,6 @@ export const expenseResolvers = {
       if (!deleteExpenseResponse) notFoundError("Expense");
 
       return deleteExpenseResponse;
-    },
+    }),
   },
 };
