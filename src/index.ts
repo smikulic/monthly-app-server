@@ -9,11 +9,13 @@ import { expenseTypeDefs } from "./schemas/expenseSchemas.js";
 import { categoryTypeDefs } from "./schemas/categorySchemas.js";
 import { subcategoryTypeDefs } from "./schemas/subcategorySchemas.js";
 import { savingGoalTypeDefs } from "./schemas/savingGoalSchemas.js";
+import { investmentTypeDefs } from "./schemas/investmentSchemas.js";
 import { userResolvers } from "./resolvers/userResolvers.js";
 import { expenseResolvers } from "./resolvers/expenseResolvers.js";
 import { categoryResolvers } from "./resolvers/categoryResolvers.js";
 import { subcategoryResolvers } from "./resolvers/subcategoryResolvers.js";
 import { savingGoalResolvers } from "./resolvers/savingGoalResolvers.js";
+import { investmentResolvers } from "./resolvers/investmentResolvers.js";
 import { contextFactory } from "./context.js";
 
 Sentry.init({
@@ -56,7 +58,8 @@ const server = new ApolloServer({
     expenseResolvers,
     categoryResolvers,
     subcategoryResolvers,
-    savingGoalResolvers
+    savingGoalResolvers,
+    investmentResolvers
   ),
   typeDefs: [
     Query,
@@ -65,6 +68,7 @@ const server = new ApolloServer({
     categoryTypeDefs,
     subcategoryTypeDefs,
     savingGoalTypeDefs,
+    investmentTypeDefs,
   ],
   // csrfPrevention: true,
   // context: ({ req }) => contextFactory(req),

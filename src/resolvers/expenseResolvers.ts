@@ -96,6 +96,7 @@ export const expenseResolvers = {
       return await context.prisma.expense.create({
         data: {
           amount: args.amount,
+          description: args.description,
           date: new Date(args.date).toISOString(),
           user: { connect: { id: context.currentUser.id } },
           subcategory: { connect: { id: args.subcategoryId } },
@@ -109,6 +110,7 @@ export const expenseResolvers = {
         },
         data: {
           amount: args.amount,
+          description: args.description,
           date: new Date(args.date).toISOString(),
           subcategory: { connect: { id: args.subcategoryId } },
         },

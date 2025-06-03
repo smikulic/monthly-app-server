@@ -4,6 +4,7 @@ export const expenseTypeDefs = `
     subcategoryId: ID!
     date: String!
     amount: Int!
+    description: String
   }
 
   type CategoryExpenseTotal {
@@ -23,11 +24,12 @@ export const expenseTypeDefs = `
   }
 
   extend type Mutation {
-    createExpense(subcategoryId: ID!, amount: Int!, date: String!): Expense!
+    createExpense(subcategoryId: ID!, amount: Int!, description: String, date: String!): Expense!
     updateExpense(
       id: ID!
       subcategoryId: ID!
       amount: Int!
+      description: String
       date: String!
     ): Expense!
     deleteExpense(id: ID!): Expense!
