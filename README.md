@@ -41,19 +41,21 @@ and one on *Postmark*:
 ### Database
 - We use Postgres DB with Prisma ORM (migrations and DB management)
 
+To seed `demo` user you can run `npx prisma db seed`
+
 ## Local development
 
 To run the server we need to run:
-  - `npm start` which starts the server on `http://localhost:3001`
+  - `yarn dev` which starts the server on `http://localhost:3001`
   - we connect to remote development DB hosted on Digital Ocean (env files hooked up to Prisma client)
 
 When making Prisma schema changes:
-  - `npm run build` - this will generate and execute Prisma migration on remote/dev DB
+  - `yarn build` - this will generate and execute Prisma migration on remote/dev DB
 
 ### Debugging
 We can inspect and check database with tools like DBeaver and connect to either `development` or `production` DB by using `DATABASE_URL` from either `.env` or `.env.prod` local files (or by checking the URL string from Digital Ocean).
 
-Inspecting and checking GraphQL schema, queries and migrations can be done by running `npm run prisma-studio` and typing in the local development API (`http://localhost:3001`) or production API (`https://yourmonthly.app`), or just go to `http://localhost:3001/api` or `https://yourmonthly.app/api` and let Prisma Studio to guide you.
+Inspecting and checking GraphQL schema, queries and migrations can be done by running `yarn prisma-studio` and typing in the local development API (`http://localhost:3001`) or production API (`https://yourmonthly.app`), or just go to `http://localhost:3001/api` or `https://yourmonthly.app/api` and let Prisma Studio to guide you.
 
 ## Production deploy
 pushing `master` branch will trigger migrations automatically on `production` DB
