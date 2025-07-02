@@ -38,7 +38,7 @@ export const investmentResolvers = {
             quantity: args.input.quantity,
             amount: args.input.amount,
             currency: args.input.currency,
-            startDate: new Date(args.input.startDate),
+            startDate: new Date(args.input.startDate).toISOString(),
             initialAmount: args.input.initialAmount,
             user: { connect: { id: context.currentUser.id } },
           },
