@@ -5,6 +5,8 @@ type Investment {
   quantity: Float!
   amount: Int!
   currency: String!
+  startDate: String!
+  initialAmount: Int!
   createdAt: String!
   updatedAt: String!
 }
@@ -14,6 +16,8 @@ input CreateInvestmentInput {
   quantity: Float!
   amount: Int
   currency: String!
+  startDate: String!
+  initialAmount: Int!
 }
 
 input UpdateInvestmentInput {
@@ -22,6 +26,8 @@ input UpdateInvestmentInput {
   quantity: Float
   amount: Int
   currency: String
+  startDate: String
+  initialAmount: Int
 }
 
 extend type Query {

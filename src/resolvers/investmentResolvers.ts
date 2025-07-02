@@ -38,6 +38,8 @@ export const investmentResolvers = {
             quantity: args.input.quantity,
             amount: args.input.amount,
             currency: args.input.currency,
+            startDate: new Date(args.input.startDate),
+            initialAmount: args.input.initialAmount,
             user: { connect: { id: context.currentUser.id } },
           },
         });
@@ -66,6 +68,8 @@ export const investmentResolvers = {
             quantity: args.input.quantity ?? undefined,
             amount: args.input.amount ?? undefined,
             currency: args.input.currency ?? undefined,
+            startDate: args.input.startDate ? new Date(args.input.startDate) : undefined,
+            initialAmount: args.input.initialAmount ?? undefined,
           },
         });
         return updated;
