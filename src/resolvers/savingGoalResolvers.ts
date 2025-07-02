@@ -1,5 +1,10 @@
 import { notFoundError } from "../utils/notFoundError.js";
 import { secured } from "../utils/secured.js";
+import {
+  sanitizeString,
+  validatePositiveInteger,
+  validateDate,
+} from "../utils/validation.js";
 
 export const savingGoalResolvers = {
   Query: {
@@ -18,9 +23,49 @@ export const savingGoalResolvers = {
   },
   Mutation: {
     createSavingGoal: secured(async (parent, args, context) => {
+      // Validate inputs
+      if (
+        !args.name ||
+        typeof args.name !== "string" ||
+        args.name.trim().length === 0
+      ) {
+        throw new Error("Saving goal name is required");
+      }
+
+      const goalAmountValidation = validatePositiveInteger(
+        args.goalAmount,
+        "goalAmount"
+      );
+      if (!goalAmountValidation.isValid) {
+        throw new Error(
+          `Goal amount validation failed: ${goalAmountValidation.errors.join(
+            ", "
+          )}`
+        );
+      }
+
+      const initialAmountValidation = validatePositiveInteger(
+        args.initialSaveAmount,
+        "initialSaveAmount"
+      );
+      if (!initialAmountValidation.isValid) {
+        throw new Error(
+          `Initial save amount validation failed: ${initialAmountValidation.errors.join(
+            ", "
+          )}`
+        );
+      }
+
+      const dateValidation = validateDate(args.goalDate, "goalDate");
+      if (!dateValidation.isValid) {
+        throw new Error(
+          `Goal date validation failed: ${dateValidation.errors.join(", ")}`
+        );
+      }
+
       return await context.prisma.savingGoal.create({
         data: {
-          name: args.name,
+          name: sanitizeString(args.name, 100),
           goalDate: new Date(args.goalDate).toISOString(),
           goalAmount: args.goalAmount,
           initialSaveAmount: args.initialSaveAmount,

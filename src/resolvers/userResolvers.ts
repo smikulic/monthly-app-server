@@ -10,6 +10,11 @@ import {
   sendPasswordResetEmail,
 } from "../helpers/emails.js";
 import { generateBudgetReportPdf } from "../helpers/reports.js";
+import {
+  validateEmail,
+  validatePassword,
+  sanitizeString,
+} from "../utils/validation.js";
 
 export const userResolvers = {
   Query: {
@@ -37,10 +42,42 @@ export const userResolvers = {
   },
   Mutation: {
     signup: async (_parent: unknown, args: any, context: any) => {
-      const password = await bcrypt.hash(args.password, 10);
+      // Validate email
+      const emailValidation = validateEmail(args.email);
+      if (!emailValidation.isValid) {
+        throw new Error(
+          `Email validation failed: ${emailValidation.errors.join(", ")}`
+        );
+      }
+
+      // Validate password
+      const passwordValidation = validatePassword(args.password);
+      if (!passwordValidation.isValid) {
+        throw new Error(
+          `Password validation failed: ${passwordValidation.errors.join(", ")}`
+        );
+      }
+
+      // Sanitize email (normalize)
+      const sanitizedEmail = args.email.toLowerCase().trim();
+
+      // Check if user already exists
+      const existingUser = await context.prisma.user.findUnique({
+        where: { email: sanitizedEmail },
+      });
+
+      if (existingUser) {
+        throw new Error("User with this email already exists");
+      }
+
+      const hashedPassword = await bcrypt.hash(args.password, 10);
 
       const user = await context.prisma.user.create({
-        data: { ...args, password },
+        data: {
+          email: sanitizedEmail,
+          password: hashedPassword,
+          currency: args.currency ? sanitizeString(args.currency, 10) : null,
+        },
       });
 
       const confirmToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
@@ -85,8 +122,16 @@ export const userResolvers = {
       };
     },
     login: async (_parent: unknown, args: any, context: any) => {
+      // Validate email format
+      const emailValidation = validateEmail(args.email);
+      if (!emailValidation.isValid) {
+        throw new Error("Invalid email format");
+      }
+
+      const sanitizedEmail = args.email.toLowerCase().trim();
+
       const user = await context.prisma.user.findUnique({
-        where: { email: args.email },
+        where: { email: sanitizedEmail },
       });
       if (!user) notFoundError("User");
 

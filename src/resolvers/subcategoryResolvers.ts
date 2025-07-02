@@ -1,6 +1,11 @@
 import { notFoundError } from "../utils/notFoundError.js";
 import { getFilterDateRange } from "../utils/getFilterDateRange.js";
 import { secured } from "../utils/secured.js";
+import {
+  sanitizeString,
+  validatePositiveInteger,
+  validateDate,
+} from "../utils/validation.js";
 
 export const subcategoryResolvers = {
   Query: {
@@ -18,12 +23,49 @@ export const subcategoryResolvers = {
   },
   Mutation: {
     createSubcategory: secured(async (parent, args, context) => {
+      // Validate inputs
+      if (
+        !args.name ||
+        typeof args.name !== "string" ||
+        args.name.trim().length === 0
+      ) {
+        throw new Error("Subcategory name is required");
+      }
+
+      const budgetValidation = validatePositiveInteger(
+        args.budgetAmount,
+        "budgetAmount"
+      );
+      if (!budgetValidation.isValid) {
+        throw new Error(
+          `Budget amount validation failed: ${budgetValidation.errors.join(
+            ", "
+          )}`
+        );
+      }
+
+      const dateValidation = validateDate(args.rolloverDate, "rolloverDate");
+      if (!dateValidation.isValid) {
+        throw new Error(
+          `Rollover date validation failed: ${dateValidation.errors.join(", ")}`
+        );
+      }
+
+      // Verify category belongs to user
+      const category = await context.prisma.category.findFirst({
+        where: { id: args.categoryId, userId: context.currentUser.id },
+      });
+
+      if (!category) {
+        throw new Error("Category not found or doesn't belong to user");
+      }
+
       return await context.prisma.subcategory.create({
         data: {
-          name: args.name,
+          name: sanitizeString(args.name, 100),
           budgetAmount: args.budgetAmount,
           rolloverDate: new Date(args.rolloverDate).toISOString(),
-          icon: args.icon || "",
+          icon: args.icon ? sanitizeString(args.icon, 50) : "",
           category: { connect: { id: args.categoryId } },
         },
       });
@@ -41,19 +83,20 @@ export const subcategoryResolvers = {
         },
       });
     }),
-    deleteSubcategory: secured(async (parent, args, context) => {
-      const deleteSubcategoryResponse = await context.prisma.subcategory.delete(
-        {
-          where: {
-            id: args.id,
-          },
-        }
-      );
+    deleteSubcategory: secured(
+      async (_parent, args: { id: string }, context, _info) => {
+        const deleteSubcategoryResponse =
+          await context.prisma.subcategory.delete({
+            where: {
+              id: args.id,
+            },
+          });
 
-      if (!deleteSubcategoryResponse) notFoundError("Subcategory");
+        if (!deleteSubcategoryResponse) notFoundError("Subcategory");
 
-      return deleteSubcategoryResponse;
-    }),
+        return deleteSubcategoryResponse;
+      }
+    ),
   },
   Subcategory: {
     expenses: secured((parent, args, context) => {

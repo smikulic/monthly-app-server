@@ -1,6 +1,11 @@
 import { notFoundError } from "../utils/notFoundError.js";
 import { getFilterDateRange } from "../utils/getFilterDateRange.js";
 import { secured } from "../utils/secured.js";
+import {
+  sanitizeString,
+  validatePositiveInteger,
+  validateDate,
+} from "../utils/validation.js";
 
 export const expenseResolvers = {
   Query: {
@@ -93,10 +98,47 @@ export const expenseResolvers = {
   },
   Mutation: {
     createExpense: secured(async (parent, args, context) => {
+      // Validate amount
+      const amountValidation = validatePositiveInteger(args.amount, "amount");
+      if (!amountValidation.isValid) {
+        throw new Error(
+          `Amount validation failed: ${amountValidation.errors.join(", ")}`
+        );
+      }
+
+      // Validate date
+      const dateValidation = validateDate(args.date, "date");
+      if (!dateValidation.isValid) {
+        throw new Error(
+          `Date validation failed: ${dateValidation.errors.join(", ")}`
+        );
+      }
+
+      // Validate subcategoryId exists
+      if (!args.subcategoryId || typeof args.subcategoryId !== "string") {
+        throw new Error(
+          "Subcategory ID is required and must be a valid string"
+        );
+      }
+
+      // Verify subcategory belongs to user
+      const subcategory = await context.prisma.subcategory.findFirst({
+        where: {
+          id: args.subcategoryId,
+          category: { userId: context.currentUser.id },
+        },
+      });
+
+      if (!subcategory) {
+        throw new Error("Subcategory not found or doesn't belong to user");
+      }
+
       return await context.prisma.expense.create({
         data: {
           amount: args.amount,
-          description: args.description,
+          description: args.description
+            ? sanitizeString(args.description, 255)
+            : null,
           date: new Date(args.date).toISOString(),
           user: { connect: { id: context.currentUser.id } },
           subcategory: { connect: { id: args.subcategoryId } },
@@ -104,28 +146,87 @@ export const expenseResolvers = {
       });
     }),
     updateExpense: secured(async (parent, args, context) => {
+      // Validate expense belongs to user
+      const existingExpense = await context.prisma.expense.findUnique({
+        where: { id: args.id },
+        select: { userId: true },
+      });
+
+      if (
+        !existingExpense ||
+        existingExpense.userId !== context.currentUser.id
+      ) {
+        throw new Error("Expense not found or doesn't belong to user");
+      }
+
+      // Validate amount if provided
+      if (args.amount !== undefined) {
+        const amountValidation = validatePositiveInteger(args.amount, "amount");
+        if (!amountValidation.isValid) {
+          throw new Error(
+            `Amount validation failed: ${amountValidation.errors.join(", ")}`
+          );
+        }
+      }
+
+      // Validate date if provided
+      if (args.date !== undefined) {
+        const dateValidation = validateDate(args.date, "date");
+        if (!dateValidation.isValid) {
+          throw new Error(
+            `Date validation failed: ${dateValidation.errors.join(", ")}`
+          );
+        }
+      }
+
+      // Validate subcategory if provided
+      if (args.subcategoryId !== undefined) {
+        if (!args.subcategoryId || typeof args.subcategoryId !== "string") {
+          throw new Error("Subcategory ID must be a valid string");
+        }
+
+        const subcategory = await context.prisma.subcategory.findFirst({
+          where: {
+            id: args.subcategoryId,
+            category: { userId: context.currentUser.id },
+          },
+        });
+
+        if (!subcategory) {
+          throw new Error("Subcategory not found or doesn't belong to user");
+        }
+      }
+
       return await context.prisma.expense.update({
         where: {
           id: args.id,
         },
         data: {
           amount: args.amount,
-          description: args.description,
-          date: new Date(args.date).toISOString(),
-          subcategory: { connect: { id: args.subcategoryId } },
+          description: args.description
+            ? sanitizeString(args.description, 255)
+            : args.description,
+          date: args.date ? new Date(args.date).toISOString() : undefined,
+          subcategory: args.subcategoryId
+            ? { connect: { id: args.subcategoryId } }
+            : undefined,
         },
       });
     }),
     deleteExpense: secured(async (parent, args, context) => {
-      const deleteExpenseResponse = await context.prisma.expense.delete({
+      // Use deleteMany to ensure user can only delete their own expenses
+      const deleteResult = await context.prisma.expense.deleteMany({
         where: {
           id: args.id,
+          userId: context.currentUser.id,
         },
       });
 
-      if (!deleteExpenseResponse) notFoundError("Expense");
+      if (deleteResult.count === 0) {
+        notFoundError("Expense");
+      }
 
-      return deleteExpenseResponse;
+      return { id: args.id }; // Return minimal data for confirmation
     }),
   },
 };

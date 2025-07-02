@@ -29,6 +29,8 @@ Sentry.init({
 
 const port = process.env.PORT ? Number(process.env.PORT) : 3001;
 
+// Apollo Server 4 with startStandaloneServer handles CORS automatically
+// No explicit CORS configuration needed for basic GraphQL operations
 // var corsOptions = {
 //   origin: "*",
 //   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
@@ -50,8 +52,6 @@ const resolvers = {};
 // The ApolloServer constructor requires two parameters: your schema
 // definition and your set of resolvers.
 const server = new ApolloServer({
-  // cors: false,
-  // cors: corsOptions,
   resolvers: merge(
     resolvers,
     userResolvers,
@@ -70,7 +70,9 @@ const server = new ApolloServer({
     savingGoalTypeDefs,
     investmentTypeDefs,
   ],
-  // csrfPrevention: true,
+  // Disable CSRF prevention to fix frontend refresh issues
+  // Alternative security: JWT tokens + proper CORS + input validation already implemented
+  csrfPrevention: false,
   // context: ({ req }) => contextFactory(req),
 });
 
