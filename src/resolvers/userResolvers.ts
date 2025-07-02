@@ -113,7 +113,7 @@ export const userResolvers = {
 
       // 3) now they’re “activated” → issue a real auth token
       const authToken = jwt.sign({ userId }, JWT_SECRET, {
-        expiresIn: "90d", // Token expires in 90 days
+        expiresIn: "7d", // Token expires in 7 days
       });
 
       return {
@@ -146,7 +146,7 @@ export const userResolvers = {
       }
 
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
-        expiresIn: "7d", // Token expires in 7 days
+        expiresIn: "90d", // Token expires in 90 days
       });
 
       return {

@@ -19,6 +19,9 @@ describe("subcategoryResolvers", () => {
       update: jest.Mock;
       delete: jest.Mock;
     };
+    category: {
+      findFirst: jest.Mock;
+    };
     expense: {
       findMany: jest.Mock;
     };
@@ -32,6 +35,9 @@ describe("subcategoryResolvers", () => {
         create: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
+      },
+      category: {
+        findFirst: jest.fn(),
       },
       expense: {
         findMany: jest.fn(),
@@ -83,6 +89,9 @@ describe("subcategoryResolvers", () => {
         icon: "",
         categoryId: "cat-123",
       };
+      const fakeCategory = { id: "cat-123", name: "Test Category" };
+      
+      prismaMock.category.findFirst.mockResolvedValue(fakeCategory);
       prismaMock.subcategory.create.mockResolvedValue(fakeCreated);
 
       const args = {
