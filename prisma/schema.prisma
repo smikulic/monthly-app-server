@@ -78,6 +78,8 @@ model Investment {
   amount         Int
   currency       String
   quantity       Float     // e.g. “180 stocks” or “0.9 BTC”
+  startDate      DateTime
+  initialAmount  Int
   userId         String
   user           User      @relation(fields: [userId], references: [id])
 }
