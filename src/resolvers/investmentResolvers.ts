@@ -68,7 +68,9 @@ export const investmentResolvers = {
             quantity: args.input.quantity ?? undefined,
             amount: args.input.amount ?? undefined,
             currency: args.input.currency ?? undefined,
-            startDate: args.input.startDate ? new Date(args.input.startDate) : undefined,
+            startDate: args.input.startDate
+              ? new Date(args.input.startDate).toISOString()
+              : undefined,
             initialAmount: args.input.initialAmount ?? undefined,
           },
         });
