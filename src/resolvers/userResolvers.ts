@@ -13,14 +13,19 @@ import { generateBudgetReportPdf } from "../helpers/reports.js";
 
 export const userResolvers = {
   Query: {
-    users: (parent: any, args: any, context: any) => {
-      return context.prisma.user.findMany({});
-    },
-    user: (parent: any, args: any, context: any) => {
+    users: secured((parent: any, args: any, context: any) => {
+      // Only allow admin users or return empty array for security
+      return [];
+    }),
+    user: secured((parent: any, args: any, context: any) => {
+      // Users can only query their own profile
+      if (args.id !== context.currentUser.id) {
+        throw new Error("Unauthorized: You can only access your own profile");
+      }
       return context.prisma.user.findFirst({
         where: { id: args.id },
       });
-    },
+    }),
     me: secured((parent, args, context) => {
       return context.currentUser;
     }),
@@ -70,7 +75,9 @@ export const userResolvers = {
       });
 
       // 3) now they’re “activated” → issue a real auth token
-      const authToken = jwt.sign({ userId }, JWT_SECRET);
+      const authToken = jwt.sign({ userId }, JWT_SECRET, {
+        expiresIn: "90d", // Token expires in 90 days
+      });
 
       return {
         token: authToken,
@@ -93,7 +100,9 @@ export const userResolvers = {
         throw new Error("Please confirm your email before logging in");
       }
 
-      const token = jwt.sign({ userId: user.id }, JWT_SECRET);
+      const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
+        expiresIn: "7d", // Token expires in 7 days
+      });
 
       return {
         token,
@@ -114,9 +123,7 @@ export const userResolvers = {
       // Send email to user with url and token
       await sendPasswordResetEmail(user, token);
 
-      console.log(
-        `Email sent to user ${user.email} with url and token ${token}`
-      );
+      console.log(`Password reset email sent to user ${user.email}`);
 
       return { email: user.email };
     },
@@ -143,6 +150,11 @@ export const userResolvers = {
       return updatedUser;
     },
     updateUser: secured(async (parent, args, context) => {
+      // Ensure user can only update their own profile
+      if (args.id !== context.currentUser.id) {
+        throw new Error("Unauthorized: You can only update your own profile");
+      }
+
       return await context.prisma.user.update({
         where: {
           id: args.id,

@@ -19,7 +19,7 @@ import { investmentResolvers } from "./resolvers/investmentResolvers.js";
 import { contextFactory } from "./context.js";
 
 Sentry.init({
-  dsn: "https://5afc1975164a2c5f1f04878cf842a565@o4506037007810560.ingest.sentry.io/4506039360815104",
+  dsn: process.env.SENTRY_DSN,
   integrations: [new ProfilingIntegration()],
   // Performance Monitoring
   tracesSampleRate: 0.5, // Capture 100% of the transactions, reduce in production!
