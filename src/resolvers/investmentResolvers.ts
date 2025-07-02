@@ -2,7 +2,11 @@
 
 import { secured } from "../utils/secured.js";
 import { notFoundError } from "../utils/notFoundError.js";
-import { GraphQLResolveInfo } from "graphql";
+import {
+  sanitizeString,
+  validatePositiveInteger,
+  validateDate,
+} from "../utils/validation.js";
 
 export const investmentResolvers = {
   Query: {
@@ -32,12 +36,42 @@ export const investmentResolvers = {
   Mutation: {
     createInvestment: secured(
       async (_parent, args: { input: any }, context, _info) => {
+        // Validate inputs
+        const amountValidation = validatePositiveInteger(
+          args.input.amount,
+          "amount"
+        );
+        if (!amountValidation.isValid) {
+          throw new Error(
+            `Amount validation failed: ${amountValidation.errors.join(", ")}`
+          );
+        }
+
+        const initialAmountValidation = validatePositiveInteger(
+          args.input.initialAmount,
+          "initialAmount"
+        );
+        if (!initialAmountValidation.isValid) {
+          throw new Error(
+            `Initial amount validation failed: ${initialAmountValidation.errors.join(
+              ", "
+            )}`
+          );
+        }
+
+        const dateValidation = validateDate(args.input.startDate, "startDate");
+        if (!dateValidation.isValid) {
+          throw new Error(
+            `Start date validation failed: ${dateValidation.errors.join(", ")}`
+          );
+        }
+
         return await context.prisma.investment.create({
           data: {
-            name: args.input.name,
+            name: sanitizeString(args.input.name, 100),
             quantity: args.input.quantity,
             amount: args.input.amount,
-            currency: args.input.currency,
+            currency: sanitizeString(args.input.currency, 10).toUpperCase(),
             startDate: new Date(args.input.startDate).toISOString(),
             initialAmount: args.input.initialAmount,
             user: { connect: { id: context.currentUser.id } },

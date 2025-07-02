@@ -90,26 +90,32 @@ describe("userResolvers", () => {
       prismaMock.user.findMany.mockResolvedValue(fakeUsers);
 
       // 'users' is not secured → 3 args
-      const result = await userResolvers.Query.users(null, {}, context);
+      const result = await userResolvers.Query.users(null, {}, context, dummyInfo);
 
-      expect(prismaMock.user.findMany).toHaveBeenCalledWith({});
-      expect(result).toBe(fakeUsers);
+      expect(result).toEqual([]);
     });
   });
 
   describe("Query.user", () => {
-    it("returns a user from prisma.findFirst", async () => {
-      const fakeUser = { id: "u1", email: "a@b.com" };
+    it("returns a user when accessing own profile", async () => {
+      const fakeUser = { id: dummyUser.id, email: "a@b.com" };
       prismaMock.user.findFirst.mockResolvedValue(fakeUser);
 
-      const args = { id: "u1" };
-      // 'user' is not secured → 3 args
-      const result = await userResolvers.Query.user(null, args, context);
+      const args = { id: dummyUser.id };
+      const result = await userResolvers.Query.user(null, args, context, dummyInfo);
 
       expect(prismaMock.user.findFirst).toHaveBeenCalledWith({
         where: { id: args.id },
       });
       expect(result).toBe(fakeUser);
+    });
+
+    it("throws error when trying to access another user's profile", async () => {
+      const args = { id: "other-user-id" };
+
+      await expect(
+        userResolvers.Query.user(null, args, context, dummyInfo)
+      ).rejects.toThrow("Unauthorized: You can only access your own profile");
     });
   });
 
@@ -152,12 +158,13 @@ describe("userResolvers", () => {
     it("hashes password, creates user, sends confirmation email, and returns correct payload", async () => {
       (bcrypt.hash as jest.Mock).mockResolvedValue("hashedpwd");
       const createdUser = { ...dummyUser, id: "new-id" };
+      prismaMock.user.findUnique.mockResolvedValue(null); // No existing user
       prismaMock.user.create.mockResolvedValue(createdUser);
       (jwt.sign as jest.Mock).mockReturnValue("conf-token");
 
       const args = {
         email: "new@user.com",
-        password: "plainpwd",
+        password: "StrongPass123",
         currency: "EUR",
       };
       // 'signup' is not secured → 3 args
@@ -165,7 +172,11 @@ describe("userResolvers", () => {
 
       expect(bcrypt.hash).toHaveBeenCalledWith(args.password, 10);
       expect(prismaMock.user.create).toHaveBeenCalledWith({
-        data: { ...args, password: "hashedpwd" },
+        data: { 
+          email: "new@user.com",
+          password: "hashedpwd",
+          currency: "EUR"
+        },
       });
       expect(jwt.sign).toHaveBeenCalledWith(
         { userId: createdUser.id },
@@ -206,7 +217,8 @@ describe("userResolvers", () => {
       });
       expect(jwt.sign).toHaveBeenCalledWith(
         { userId: fakePayload.userId },
-        process.env.JWT_SECRET
+        process.env.JWT_SECRET,
+        { expiresIn: "7d" }
       );
       expect(result).toEqual({ token: "auth-token", user: updatedUser });
     });
@@ -264,13 +276,18 @@ describe("userResolvers", () => {
       (jwt.sign as jest.Mock).mockReturnValue("login-token");
 
       const result = await userResolvers.Mutation.login(null, args, context);
+      
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+        where: { email: "a@b.com" },
+      });
       expect(result).toEqual({
         token: "login-token",
         user: { ...dummyUser, password: "hashed" },
       });
       expect(jwt.sign).toHaveBeenCalledWith(
         { userId: dummyUser.id },
-        process.env.JWT_SECRET
+        process.env.JWT_SECRET,
+        { expiresIn: "90d" }
       );
     });
   });

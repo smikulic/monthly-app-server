@@ -19,9 +19,12 @@ describe("expenseResolvers", () => {
       create: jest.Mock;
       update: jest.Mock;
       delete: jest.Mock;
+      deleteMany: jest.Mock;
+      findUnique: jest.Mock;
     };
     subcategory: {
       findMany: jest.Mock;
+      findFirst: jest.Mock;
     };
   };
   let context: any;
@@ -34,9 +37,12 @@ describe("expenseResolvers", () => {
         create: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
+        deleteMany: jest.fn(),
+        findUnique: jest.fn(),
       },
       subcategory: {
         findMany: jest.fn(),
+        findFirst: jest.fn(),
       },
     };
     context = {
@@ -187,12 +193,19 @@ describe("expenseResolvers", () => {
         subcategoryId: "sub-456",
         userId: dummyUser.id,
       };
+      const fakeSubcategory = {
+        id: "sub-456",
+        name: "Test Subcategory",
+      };
+      
+      prismaMock.subcategory.findFirst.mockResolvedValue(fakeSubcategory);
       prismaMock.expense.create.mockResolvedValue(fakeCreated);
 
       const args = {
         amount: 123,
         date: "2022-07-01",
         subcategoryId: "sub-456",
+        description: "Test expense",
       };
       const result = await expenseResolvers.Mutation.createExpense(
         null,
@@ -201,15 +214,48 @@ describe("expenseResolvers", () => {
         dummyInfo
       );
 
+      expect(prismaMock.subcategory.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: args.subcategoryId,
+          category: { userId: dummyUser.id }
+        }
+      });
       expect(prismaMock.expense.create).toHaveBeenCalledWith({
         data: {
           amount: args.amount,
+          description: "Test expense",
           date: new Date(args.date).toISOString(),
           user: { connect: { id: dummyUser.id } },
           subcategory: { connect: { id: args.subcategoryId } },
         },
       });
       expect(result).toBe(fakeCreated);
+    });
+
+    it("throws error when amount is invalid", async () => {
+      const args = {
+        amount: -123, // Invalid negative amount
+        date: "2022-07-01",
+        subcategoryId: "sub-456",
+      };
+
+      await expect(
+        expenseResolvers.Mutation.createExpense(null, args, context, dummyInfo)
+      ).rejects.toThrow("Amount validation failed");
+    });
+
+    it("throws error when subcategory doesn't belong to user", async () => {
+      prismaMock.subcategory.findFirst.mockResolvedValue(null);
+      
+      const args = {
+        amount: 123,
+        date: "2022-07-01",
+        subcategoryId: "sub-456",
+      };
+
+      await expect(
+        expenseResolvers.Mutation.createExpense(null, args, context, dummyInfo)
+      ).rejects.toThrow("Subcategory not found or doesn't belong to user");
     });
   });
 
@@ -222,6 +268,11 @@ describe("expenseResolvers", () => {
         subcategoryId: "sub-789",
         userId: dummyUser.id,
       };
+      const existingExpense = { userId: dummyUser.id };
+      const fakeSubcategory = { id: "sub-789", name: "Test Sub" };
+      
+      prismaMock.expense.findUnique.mockResolvedValue(existingExpense);
+      prismaMock.subcategory.findFirst.mockResolvedValue(fakeSubcategory);
       prismaMock.expense.update.mockResolvedValue(fakeUpdated);
 
       const args = {
@@ -229,6 +280,7 @@ describe("expenseResolvers", () => {
         amount: 200,
         date: "2022-08-15",
         subcategoryId: "sub-789",
+        description: "Updated expense",
       };
       const result = await expenseResolvers.Mutation.updateExpense(
         null,
@@ -237,22 +289,40 @@ describe("expenseResolvers", () => {
         dummyInfo
       );
 
+      expect(prismaMock.expense.findUnique).toHaveBeenCalledWith({
+        where: { id: args.id },
+        select: { userId: true }
+      });
       expect(prismaMock.expense.update).toHaveBeenCalledWith({
         where: { id: args.id },
         data: {
           amount: args.amount,
+          description: "Updated expense",
           date: new Date(args.date).toISOString(),
           subcategory: { connect: { id: args.subcategoryId } },
         },
       });
       expect(result).toBe(fakeUpdated);
     });
+
+    it("throws error when expense doesn't belong to user", async () => {
+      prismaMock.expense.findUnique.mockResolvedValue(null);
+      
+      const args = {
+        id: "exp2",
+        amount: 200,
+      };
+
+      await expect(
+        expenseResolvers.Mutation.updateExpense(null, args, context, dummyInfo)
+      ).rejects.toThrow("Expense not found or doesn't belong to user");
+    });
   });
 
   describe("Mutation.deleteExpense", () => {
-    it("calls prisma.expense.delete and returns the deleted record", async () => {
-      const fakeDeleted = { id: "exp3", amount: 50 };
-      prismaMock.expense.delete.mockResolvedValue(fakeDeleted);
+    it("calls prisma.expense.deleteMany and returns confirmation", async () => {
+      const deleteResult = { count: 1 };
+      prismaMock.expense.deleteMany.mockResolvedValue(deleteResult);
 
       const args = { id: "exp3" };
       const result = await expenseResolvers.Mutation.deleteExpense(
@@ -262,19 +332,23 @@ describe("expenseResolvers", () => {
         dummyInfo
       );
 
-      expect(prismaMock.expense.delete).toHaveBeenCalledWith({
-        where: { id: args.id },
+      expect(prismaMock.expense.deleteMany).toHaveBeenCalledWith({
+        where: {
+          id: args.id,
+          userId: dummyUser.id,
+        },
       });
-      expect(result).toBe(fakeDeleted);
+      expect(result).toEqual({ id: args.id });
     });
 
-    it("throws notFoundError when prisma.expense.delete resolves to null", async () => {
-      prismaMock.expense.delete.mockResolvedValue(null);
+    it("throws error when expense doesn't belong to user", async () => {
+      const deleteResult = { count: 0 };
+      prismaMock.expense.deleteMany.mockResolvedValue(deleteResult);
       const args = { id: "missing-exp" };
 
       await expect(
         expenseResolvers.Mutation.deleteExpense(null, args, context, dummyInfo)
-      ).rejects.toThrowError(new Error("No such Expense found"));
+      ).rejects.toThrow("No such Expense found");
     });
   });
 });
