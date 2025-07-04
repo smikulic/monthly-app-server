@@ -227,16 +227,19 @@ export const userResolvers = {
         // b) remove all saving goals for this user
         context.prisma.savingGoal.deleteMany({ where: { userId } }),
 
-        // c) remove all subcategories whose categoryId is in categoryIds
+        // c) remove all investments for this user
+        context.prisma.investment.deleteMany({ where: { userId } }),
+
+        // d) remove all subcategories whose categoryId is in categoryIds
         //    (if categoryIds is empty, Prisma simply does nothing)
         context.prisma.subcategory.deleteMany({
           where: { categoryId: { in: categoryIds } },
         }),
 
-        // d) now remove all categories for this user
+        // e) now remove all categories for this user
         context.prisma.category.deleteMany({ where: { userId } }),
 
-        // e) finally, delete the user record itself
+        // f) finally, delete the user record itself
         context.prisma.user.delete({ where: { id: userId } }),
       ]);
 
