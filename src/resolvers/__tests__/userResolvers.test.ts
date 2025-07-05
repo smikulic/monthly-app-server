@@ -72,6 +72,9 @@ describe("userResolvers", () => {
       savingGoal: {
         deleteMany: jest.fn(),
       },
+      investment: {
+        deleteMany: jest.fn(),
+      },
       subcategory: {
         deleteMany: jest.fn(),
       },
@@ -419,6 +422,7 @@ describe("userResolvers", () => {
       expect(prismaMock.$transaction).toHaveBeenCalledWith([
         prismaMock.expense.deleteMany({ where: { userId: dummyUser.id } }),
         prismaMock.savingGoal.deleteMany({ where: { userId: dummyUser.id } }),
+        prismaMock.investment.deleteMany({ where: { userId: dummyUser.id } }),
         prismaMock.subcategory.deleteMany({
           where: { categoryId: { in: ["c1", "c2"] } },
         }),
