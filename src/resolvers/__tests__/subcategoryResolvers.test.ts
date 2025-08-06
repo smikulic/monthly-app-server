@@ -90,7 +90,7 @@ describe("subcategoryResolvers", () => {
         categoryId: "cat-123",
       };
       const fakeCategory = { id: "cat-123", name: "Test Category" };
-      
+
       prismaMock.category.findFirst.mockResolvedValue(fakeCategory);
       prismaMock.subcategory.create.mockResolvedValue(fakeCreated);
 
@@ -108,11 +108,14 @@ describe("subcategoryResolvers", () => {
         dummyInfo
       );
 
+      const [y, m, d] = args.rolloverDate.split("-").map(Number);
+      const dateForStorage = new Date(Date.UTC(y, m - 1, d));
+
       expect(prismaMock.subcategory.create).toHaveBeenCalledWith({
         data: {
           name: args.name,
           budgetAmount: args.budgetAmount,
-          rolloverDate: new Date(args.rolloverDate).toISOString(),
+          rolloverDate: dateForStorage,
           icon: "",
           category: { connect: { id: args.categoryId } },
         },
@@ -146,13 +149,16 @@ describe("subcategoryResolvers", () => {
         dummyInfo
       );
 
+      const [y, m, d] = args.rolloverDate.split("-").map(Number);
+      const dateForStorage = new Date(Date.UTC(y, m - 1, d));
+
       expect(prismaMock.subcategory.update).toHaveBeenCalledWith({
         where: { id: args.id },
         data: {
           categoryId: args.categoryId,
           name: args.name,
           budgetAmount: args.budgetAmount,
-          rolloverDate: new Date(args.rolloverDate).toISOString(),
+          rolloverDate: dateForStorage,
         },
       });
       expect(result).toBe(fakeUpdated);

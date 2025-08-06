@@ -133,13 +133,16 @@ export const expenseResolvers = {
         throw new Error("Subcategory not found or doesn't belong to user");
       }
 
+      const [y, m, d] = args.date.split("-").map(Number);
+      const dateForStorage = new Date(Date.UTC(y, m - 1, d));
+
       return await context.prisma.expense.create({
         data: {
           amount: args.amount,
           description: args.description
             ? sanitizeString(args.description, 255)
             : null,
-          date: new Date(args.date).toISOString(),
+          date: dateForStorage,
           user: { connect: { id: context.currentUser.id } },
           subcategory: { connect: { id: args.subcategoryId } },
         },
@@ -170,6 +173,7 @@ export const expenseResolvers = {
       }
 
       // Validate date if provided
+      let dateForStorage = undefined;
       if (args.date !== undefined) {
         const dateValidation = validateDate(args.date, "date");
         if (!dateValidation.isValid) {
@@ -177,6 +181,9 @@ export const expenseResolvers = {
             `Date validation failed: ${dateValidation.errors.join(", ")}`
           );
         }
+
+        const [y, m, d] = args.date.split("-").map(Number);
+        dateForStorage = new Date(Date.UTC(y, m - 1, d));
       }
 
       // Validate subcategory if provided
@@ -206,7 +213,7 @@ export const expenseResolvers = {
           description: args.description
             ? sanitizeString(args.description, 255)
             : args.description,
-          date: args.date ? new Date(args.date).toISOString() : undefined,
+          date: dateForStorage,
           subcategory: args.subcategoryId
             ? { connect: { id: args.subcategoryId } }
             : undefined,

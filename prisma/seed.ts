@@ -6,6 +6,8 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 const rolloverDate = "2025-01-05";
+const [y, m, d] = rolloverDate.split("-").map(Number);
+const dateForStorage = new Date(Date.UTC(y, m - 1, d));
 
 async function main() {
   // 1) Check if demo users already exist
@@ -150,7 +152,7 @@ async function main() {
     data: {
       name: "Groceries",
       budgetAmount: 300,
-      rolloverDate: new Date(rolloverDate).toISOString(),
+      rolloverDate: dateForStorage,
       icon: "",
       category: { connect: { id: foodCategory.id } },
     },
@@ -160,7 +162,7 @@ async function main() {
     data: {
       name: "Restaurants",
       budgetAmount: 200,
-      rolloverDate: new Date(rolloverDate).toISOString(),
+      rolloverDate: dateForStorage,
       icon: "",
       category: { connect: { id: foodCategory.id } },
     },
@@ -170,7 +172,7 @@ async function main() {
     data: {
       name: "Movies & Concerts",
       budgetAmount: 150,
-      rolloverDate: new Date(rolloverDate).toISOString(),
+      rolloverDate: dateForStorage,
       icon: "",
       category: { connect: { id: entertainmentCategory.id } },
     },
@@ -180,7 +182,7 @@ async function main() {
     data: {
       name: "Vacation",
       budgetAmount: 500,
-      rolloverDate: new Date(rolloverDate).toISOString(),
+      rolloverDate: dateForStorage,
       icon: "",
       category: { connect: { id: entertainmentCategory.id } },
     },
@@ -190,7 +192,7 @@ async function main() {
     data: {
       name: "Coffee & Drinks",
       budgetAmount: 100,
-      rolloverDate: new Date(rolloverDate).toISOString(),
+      rolloverDate: dateForStorage,
       icon: "",
       category: { connect: { id: entertainmentCategory.id } },
     },
@@ -203,10 +205,12 @@ async function main() {
     description: string,
     subcategoryId: string
   ) {
+    const [y, m, d] = dateStr.split("-").map(Number);
+    const dateForStorage = new Date(Date.UTC(y, m - 1, d));
     await prisma.expense.create({
       data: {
         amount,
-        date: new Date(dateStr).toISOString(),
+        date: dateForStorage,
         description,
         user: { connect: { id: demoUser.id } },
         subcategory: { connect: { id: subcategoryId } },
@@ -295,11 +299,20 @@ async function main() {
     }
   }
 
+  const [y, m, d] = "2025-12-31".split("-").map(Number);
+  const goalDateOne = new Date(Date.UTC(y, m - 1, d));
+  const [y2, m2, d2] = "2020-06-15".split("-").map(Number);
+  const startDateOne = new Date(Date.UTC(y2, m2 - 1, d2));
+  const [y3, m3, d3] = "2022-01-10".split("-").map(Number);
+  const startDateTwo = new Date(Date.UTC(y3, m3 - 1, d3));
+  const [y4, m4, d4] = "2023-03-20".split("-").map(Number);
+  const startDateThree = new Date(Date.UTC(y4, m4 - 1, d4));
+
   // 8) Add one SavingGoal
   await prisma.savingGoal.create({
     data: {
       name: "Vacation Fund",
-      goalDate: new Date("2025-12-31").toISOString(),
+      goalDate: goalDateOne,
       goalAmount: 2000,
       initialSaveAmount: 100,
       user: { connect: { id: demoUser.id } },
@@ -313,7 +326,7 @@ async function main() {
       amount: 350000,
       currency: "EUR",
       quantity: 1,
-      startDate: new Date("2020-06-15").toISOString(),
+      startDate: startDateOne,
       initialAmount: 320000,
     },
     {
@@ -321,7 +334,7 @@ async function main() {
       amount: 12500,
       currency: "EUR",
       quantity: 50,
-      startDate: new Date("2022-01-10").toISOString(),
+      startDate: startDateTwo,
       initialAmount: 10000,
     },
     {
@@ -329,7 +342,7 @@ async function main() {
       amount: 6250,
       currency: "EUR",
       quantity: 25,
-      startDate: new Date("2023-03-20").toISOString(),
+      startDate: startDateThree,
       initialAmount: 5000,
     },
   ];

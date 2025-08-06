@@ -96,10 +96,13 @@ describe("savingGoalResolvers", () => {
         dummyInfo
       );
 
+      const [y, m, d] = args.goalDate.split("-").map(Number);
+      const dateForStorage = new Date(Date.UTC(y, m - 1, d));
+
       expect(prismaMock.savingGoal.create).toHaveBeenCalledWith({
         data: {
           name: args.name,
-          goalDate: new Date(args.goalDate).toISOString(),
+          goalDate: dateForStorage,
           goalAmount: args.goalAmount,
           initialSaveAmount: args.initialSaveAmount,
           user: { connect: { id: dummyUser.id } },
@@ -152,11 +155,14 @@ describe("savingGoalResolvers", () => {
         dummyInfo
       );
 
+      const [y, m, d] = args.goalDate.split("-").map(Number);
+      const dateForStorage = new Date(Date.UTC(y, m - 1, d));
+
       expect(prismaMock.savingGoal.update).toHaveBeenCalledWith({
         where: { id: args.id },
         data: {
           name: args.name,
-          goalDate: new Date(args.goalDate).toISOString(),
+          goalDate: dateForStorage,
           goalAmount: args.goalAmount,
           initialSaveAmount: args.initialSaveAmount,
         },

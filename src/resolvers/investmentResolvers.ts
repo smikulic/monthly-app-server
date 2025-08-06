@@ -66,13 +66,16 @@ export const investmentResolvers = {
           );
         }
 
+        const [y, m, d] = args.input.startDate.split("-").map(Number);
+        const dateForStorage = new Date(Date.UTC(y, m - 1, d));
+
         return await context.prisma.investment.create({
           data: {
             name: sanitizeString(args.input.name, 100),
             quantity: args.input.quantity,
             amount: args.input.amount,
             currency: sanitizeString(args.input.currency, 10).toUpperCase(),
-            startDate: new Date(args.input.startDate).toISOString(),
+            startDate: dateForStorage,
             initialAmount: args.input.initialAmount,
             user: { connect: { id: context.currentUser.id } },
           },
@@ -94,6 +97,12 @@ export const investmentResolvers = {
           throw notFoundError("Investment");
         }
 
+        let dateForStorage = undefined;
+        if (args.input.startDate) {
+          const [y, m, d] = args.input.startDate.split("-").map(Number);
+          dateForStorage = new Date(Date.UTC(y, m - 1, d));
+        }
+
         // 2) Perform the update
         const updated = await context.prisma.investment.update({
           where: { id: args.input.id },
@@ -102,9 +111,7 @@ export const investmentResolvers = {
             quantity: args.input.quantity ?? undefined,
             amount: args.input.amount ?? undefined,
             currency: args.input.currency ?? undefined,
-            startDate: args.input.startDate
-              ? new Date(args.input.startDate).toISOString()
-              : undefined,
+            startDate: dateForStorage,
             initialAmount: args.input.initialAmount ?? undefined,
           },
         });

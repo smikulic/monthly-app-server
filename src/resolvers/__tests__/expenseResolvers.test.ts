@@ -197,7 +197,7 @@ describe("expenseResolvers", () => {
         id: "sub-456",
         name: "Test Subcategory",
       };
-      
+
       prismaMock.subcategory.findFirst.mockResolvedValue(fakeSubcategory);
       prismaMock.expense.create.mockResolvedValue(fakeCreated);
 
@@ -214,17 +214,20 @@ describe("expenseResolvers", () => {
         dummyInfo
       );
 
+      const [y, m, d] = args.date.split("-").map(Number);
+      const dateForStorage = new Date(Date.UTC(y, m - 1, d));
+
       expect(prismaMock.subcategory.findFirst).toHaveBeenCalledWith({
         where: {
           id: args.subcategoryId,
-          category: { userId: dummyUser.id }
-        }
+          category: { userId: dummyUser.id },
+        },
       });
       expect(prismaMock.expense.create).toHaveBeenCalledWith({
         data: {
           amount: args.amount,
           description: "Test expense",
-          date: new Date(args.date).toISOString(),
+          date: dateForStorage,
           user: { connect: { id: dummyUser.id } },
           subcategory: { connect: { id: args.subcategoryId } },
         },
@@ -246,7 +249,7 @@ describe("expenseResolvers", () => {
 
     it("throws error when subcategory doesn't belong to user", async () => {
       prismaMock.subcategory.findFirst.mockResolvedValue(null);
-      
+
       const args = {
         amount: 123,
         date: "2022-07-01",
@@ -270,7 +273,7 @@ describe("expenseResolvers", () => {
       };
       const existingExpense = { userId: dummyUser.id };
       const fakeSubcategory = { id: "sub-789", name: "Test Sub" };
-      
+
       prismaMock.expense.findUnique.mockResolvedValue(existingExpense);
       prismaMock.subcategory.findFirst.mockResolvedValue(fakeSubcategory);
       prismaMock.expense.update.mockResolvedValue(fakeUpdated);
@@ -289,16 +292,19 @@ describe("expenseResolvers", () => {
         dummyInfo
       );
 
+      const [y, m, d] = args.date.split("-").map(Number);
+      const dateForStorage = new Date(Date.UTC(y, m - 1, d));
+
       expect(prismaMock.expense.findUnique).toHaveBeenCalledWith({
         where: { id: args.id },
-        select: { userId: true }
+        select: { userId: true },
       });
       expect(prismaMock.expense.update).toHaveBeenCalledWith({
         where: { id: args.id },
         data: {
           amount: args.amount,
           description: "Updated expense",
-          date: new Date(args.date).toISOString(),
+          date: dateForStorage,
           subcategory: { connect: { id: args.subcategoryId } },
         },
       });
@@ -307,7 +313,7 @@ describe("expenseResolvers", () => {
 
     it("throws error when expense doesn't belong to user", async () => {
       prismaMock.expense.findUnique.mockResolvedValue(null);
-      
+
       const args = {
         id: "exp2",
         amount: 200,

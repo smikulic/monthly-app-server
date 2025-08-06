@@ -60,17 +60,23 @@ export const subcategoryResolvers = {
         throw new Error("Category not found or doesn't belong to user");
       }
 
+      const [y, m, d] = args.rolloverDate.split("-").map(Number);
+      const dateForStorage = new Date(Date.UTC(y, m - 1, d));
+
       return await context.prisma.subcategory.create({
         data: {
           name: sanitizeString(args.name, 100),
           budgetAmount: args.budgetAmount,
-          rolloverDate: new Date(args.rolloverDate).toISOString(),
+          rolloverDate: dateForStorage,
           icon: args.icon ? sanitizeString(args.icon, 50) : "",
           category: { connect: { id: args.categoryId } },
         },
       });
     }),
     updateSubcategory: secured(async (parent, args, context) => {
+      const [y, m, d] = args.rolloverDate.split("-").map(Number);
+      const dateForStorage = new Date(Date.UTC(y, m - 1, d));
+
       return await context.prisma.subcategory.update({
         where: {
           id: args.id,
@@ -79,7 +85,7 @@ export const subcategoryResolvers = {
           categoryId: args.categoryId,
           name: args.name,
           budgetAmount: args.budgetAmount,
-          rolloverDate: new Date(args.rolloverDate).toISOString(),
+          rolloverDate: dateForStorage,
         },
       });
     }),

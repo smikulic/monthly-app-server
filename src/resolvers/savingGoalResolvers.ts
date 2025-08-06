@@ -63,10 +63,13 @@ export const savingGoalResolvers = {
         );
       }
 
+      const [y, m, d] = args.goalDate.split("-").map(Number);
+      const dateForStorage = new Date(Date.UTC(y, m - 1, d));
+
       return await context.prisma.savingGoal.create({
         data: {
           name: sanitizeString(args.name, 100),
-          goalDate: new Date(args.goalDate).toISOString(),
+          goalDate: dateForStorage,
           goalAmount: args.goalAmount,
           initialSaveAmount: args.initialSaveAmount,
           user: { connect: { id: context.currentUser.id } },
@@ -74,13 +77,16 @@ export const savingGoalResolvers = {
       });
     }),
     updateSavingGoal: secured(async (parent, args, context) => {
+      const [y, m, d] = args.goalDate.split("-").map(Number);
+      const dateForStorage = new Date(Date.UTC(y, m - 1, d));
+
       return await context.prisma.savingGoal.update({
         where: {
           id: args.id,
         },
         data: {
           name: args.name,
-          goalDate: new Date(args.goalDate).toISOString(),
+          goalDate: dateForStorage,
           goalAmount: args.goalAmount,
           initialSaveAmount: args.initialSaveAmount,
         },
