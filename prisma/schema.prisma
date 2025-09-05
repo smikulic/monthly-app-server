@@ -15,6 +15,7 @@ model User {
   password       String
   emailConfirmed Boolean    @default(false)
   currency       String?
+  weeklyReminder Boolean    @default(false)
   categories     Category[]
   expenses       Expense[]
   savingGoals    SavingGoal[]

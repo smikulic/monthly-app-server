@@ -5,6 +5,7 @@ export const userTypeDefs = `
     password: String!
     emailConfirmed: Boolean
     currency: String
+    weeklyReminder: Boolean
     categories: [Category]
     expenses: [Expense]
   }
@@ -35,7 +36,7 @@ export const userTypeDefs = `
     login(email: String!, password: String!): AuthPayload
     resetPasswordRequest(email: String!): PasswordResetRequestPayload!
     resetPassword(token: String!, password: String!): User!
-    updateUser(id: ID!, currency: String!): User!
+    updateUser(id: ID!, currency: String!, weeklyReminder: Boolean!): User!
     # Deletes the currently-authenticated user and all their data.
     deleteAccount: Boolean!
   }
