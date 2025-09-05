@@ -52,6 +52,9 @@ To run the server we need to run:
 When making Prisma schema changes:
   - `yarn build` - this will generate and execute Prisma migration on remote/dev DB
 
+If you wanna test cron job worker you will need to add `CRON_ENABLED=true` to `.env` or run the script once via package.json scripts.
+As an alternative play around with dry run scripts.
+
 ### Debugging
 We can inspect and check database with tools like DBeaver and connect to either `development` or `production` DB by using `DATABASE_URL` from either `.env` or `.env.prod` local files (or by checking the URL string from Digital Ocean).
 
