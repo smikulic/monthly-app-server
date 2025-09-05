@@ -17,16 +17,16 @@
     "start": "node dist/start.js",
     "test": "jest",
     
-    "cron:one:dry":  "DRY_RUN=true RUN_SCOPE=one LOOP=false node --loader ts-node/esm src/scripts/weeklyReminder.dev.ts",
-    "cron:one:send": "DRY_RUN=false RUN_SCOPE=one LOOP=false node --loader ts-node/esm src/scripts/weeklyReminder.dev.ts",
+    "cron:one:dry":  "DRY_RUN=true RUN_SCOPE=one LOOP=false node --loader ts-node/esm src/jobs/weeklyReminder.dev.ts",
+    "cron:one:send": "DRY_RUN=false RUN_SCOPE=one LOOP=false node --loader ts-node/esm src/jobs/weeklyReminder.dev.ts",
 
-    "cron:all:dry":  "DRY_RUN=true RUN_SCOPE=all LOOP=false node --loader ts-node/esm src/scripts/weeklyReminder.dev.ts",
-    "cron:all:send": "DRY_RUN=false RUN_SCOPE=all LOOP=false node --loader ts-node/esm src/scripts/weeklyReminder.dev.ts",
+    "cron:all:dry":  "DRY_RUN=true RUN_SCOPE=all LOOP=false node --loader ts-node/esm src/jobs/weeklyReminder.dev.ts",
+    "cron:all:send": "DRY_RUN=false RUN_SCOPE=all LOOP=false node --loader ts-node/esm src/jobs/weeklyReminder.dev.ts",
 
-    "cron:loop:all:dry":  "DRY_RUN=true RUN_SCOPE=all LOOP=true node --loader ts-node/esm src/scripts/weeklyReminder.dev.ts",
-    "cron:loop:all:send": "DRY_RUN=false RUN_SCOPE=all LOOP=true node --loader ts-node/esm src/scripts/weeklyReminder.dev.ts",
+    "cron:loop:all:dry":  "DRY_RUN=true RUN_SCOPE=all LOOP=true node --loader ts-node/esm src/jobs/weeklyReminder.dev.ts",
+    "cron:loop:all:send": "DRY_RUN=false RUN_SCOPE=all LOOP=true node --loader ts-node/esm src/jobs/weeklyReminder.dev.ts",
 
-    "cron:weekly": "node dist/scripts/weeklyReminder.js"
+    "cron:run-once": "node dist/jobs/weeklyReminder.js"
   },
   "prisma": {
     "seed": "node --loader ts-node/esm prisma/seed.ts"

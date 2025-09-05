@@ -4,7 +4,7 @@ import { PrismaClient, User } from "@prisma/client";
 import { startOfWeek, endOfWeek } from "date-fns";
 import { toZonedTime, fromZonedTime, formatInTimeZone } from "date-fns-tz";
 // @ts-ignore
-import { sendWeeklyReminderEmail } from "../helpers/emails.ts";
+import { sendWeeklyReminderEmail } from "../helpers/emails.js";
 
 const prisma = new PrismaClient();
 

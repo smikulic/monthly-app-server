@@ -1,5 +1,6 @@
 import { ApolloServer } from "@apollo/server";
 import { startStandaloneServer } from "@apollo/server/standalone";
+import cron from "node-cron";
 import * as Sentry from "@sentry/node";
 import { ProfilingIntegration } from "@sentry/profiling-node";
 import lodash from "lodash";
@@ -16,6 +17,10 @@ import { categoryResolvers } from "./resolvers/categoryResolvers.js";
 import { subcategoryResolvers } from "./resolvers/subcategoryResolvers.js";
 import { savingGoalResolvers } from "./resolvers/savingGoalResolvers.js";
 import { investmentResolvers } from "./resolvers/investmentResolvers.js";
+
+import { prisma } from "./context.js";
+import { tryLock, unlock } from "./utils/advisoryLock.js";
+import { sendAllWeeklyReminders } from "./jobs/weeklyReminder.core.js";
 import { contextFactory } from "./context.js";
 
 Sentry.init({
@@ -93,3 +98,55 @@ const { url } = await startStandaloneServer(server, {
 });
 
 console.log(`🚀  Server ready at: ${url}`);
+
+// ---- Scheduler (inside web service) ----
+const DEFAULT_TZ = process.env.DEFAULT_TZ || "Europe/Zagreb";
+const INTERVAL_CRON = process.env.INTERVAL_CRON || "0 11 * * 6"; // Saturday 11:00
+const CRON_ENABLED = process.env.CRON_ENABLED === "true";
+
+let isRunning = false;
+
+if (CRON_ENABLED) {
+  cron.schedule(
+    INTERVAL_CRON,
+    async () => {
+      if (isRunning) {
+        console.log(
+          "[weekly-reminder] previous tick still running — skipping."
+        );
+        return;
+      }
+      if (!(await tryLock(prisma))) {
+        console.log("[weekly-reminder] lock held — skipping tick");
+        return;
+      }
+
+      isRunning = true;
+      console.log("[weekly-reminder] tick start", {
+        tz: DEFAULT_TZ,
+        cron: INTERVAL_CRON,
+        ts: new Date().toISOString(),
+      });
+
+      try {
+        await sendAllWeeklyReminders(prisma);
+      } catch (e) {
+        console.error("[weekly-reminder] tick error", {
+          error: (e as Error)?.message ?? String(e),
+        });
+      } finally {
+        await unlock(prisma).catch(() => {});
+        isRunning = false;
+        console.log("[weekly-reminder] tick end", {
+          ts: new Date().toISOString(),
+        });
+      }
+    },
+    { timezone: DEFAULT_TZ }
+  );
+
+  console.log("[weekly-reminder] scheduler armed", {
+    tz: DEFAULT_TZ,
+    cron: INTERVAL_CRON,
+  });
+}
