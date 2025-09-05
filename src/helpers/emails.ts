@@ -40,3 +40,28 @@ export async function sendPasswordResetEmail(
     MessageStream: "outbound",
   });
 }
+
+export async function sendWeeklyReminderEmail(
+  user: PrismaUser,
+  model: {
+    week_range: string;
+    total_spent: string;
+    budget_left: string;
+    total_budget_week: string;
+  }
+): Promise<void> {
+  if (!user.email) return;
+
+  await postmarkClient.sendEmailWithTemplate({
+    From: "support@yourmonthly.app",
+    To: user.email,
+    TemplateAlias: "weekly-reminder",
+    TemplateModel: {
+      product_name: "Monthly App",
+      action_url: "https://app.yourmonthly.app",
+      settings_url: "https://app.yourmonthly.app/profile",
+      ...model,
+    },
+    MessageStream: "outbound",
+  });
+}

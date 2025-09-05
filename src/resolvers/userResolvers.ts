@@ -206,6 +206,7 @@ export const userResolvers = {
         },
         data: {
           currency: args.currency,
+          weeklyReminder: args.weeklyReminder,
         },
       });
     }),

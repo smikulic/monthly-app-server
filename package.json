@@ -15,7 +15,18 @@
     "build": "prisma generate && prisma migrate deploy && tsc",
     "dev": "tsx watch src/start.ts",
     "start": "node dist/start.js",
-    "test": "jest"
+    "test": "jest",
+    
+    "cron:one:dry":  "DRY_RUN=true RUN_SCOPE=one LOOP=false node --loader ts-node/esm src/scripts/weeklyReminder.dev.ts",
+    "cron:one:send": "DRY_RUN=false RUN_SCOPE=one LOOP=false node --loader ts-node/esm src/scripts/weeklyReminder.dev.ts",
+
+    "cron:all:dry":  "DRY_RUN=true RUN_SCOPE=all LOOP=false node --loader ts-node/esm src/scripts/weeklyReminder.dev.ts",
+    "cron:all:send": "DRY_RUN=false RUN_SCOPE=all LOOP=false node --loader ts-node/esm src/scripts/weeklyReminder.dev.ts",
+
+    "cron:loop:all:dry":  "DRY_RUN=true RUN_SCOPE=all LOOP=true node --loader ts-node/esm src/scripts/weeklyReminder.dev.ts",
+    "cron:loop:all:send": "DRY_RUN=false RUN_SCOPE=all LOOP=true node --loader ts-node/esm src/scripts/weeklyReminder.dev.ts",
+
+    "cron:weekly": "node dist/scripts/weeklyReminder.js"
   },
   "prisma": {
     "seed": "node --loader ts-node/esm prisma/seed.ts"
@@ -26,10 +37,13 @@
     "@sentry/node": "^7.118.0",
     "@sentry/profiling-node": "^1.3.5",
     "bcryptjs": "^2.4.3",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
     "dotenv": "^16.3.1",
     "graphql": "^16.11.0",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
+    "node-cron": "^4.2.1",
     "pdfkit": "^0.17.1",
     "postmark": "^4.0.5",
     "stream-buffers": "^3.0.3",
