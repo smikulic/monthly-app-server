@@ -101,52 +101,78 @@ console.log(`🚀  Server ready at: ${url}`);
 
 // ---- Scheduler (inside web service) ----
 const DEFAULT_TZ = process.env.DEFAULT_TZ || "Europe/Zagreb";
-const INTERVAL_CRON = process.env.INTERVAL_CRON || "0 11 * * 6"; // Saturday 11:00
-const CRON_ENABLED = process.env.CRON_ENABLED === "true";
+const INTERVAL_CRON = (process.env.INTERVAL_CRON || "0 22 * * 6").trim();
+const CRON_ENABLED = String(process.env.CRON_ENABLED) === "true";
 
 let isRunning = false;
 
+// Basic validation + boot diagnostics
 if (CRON_ENABLED) {
+  const ok = cron.validate(INTERVAL_CRON);
+  console.log("[weekly-reminder] scheduler armed", {
+    tz: DEFAULT_TZ,
+    cron: INTERVAL_CRON,
+    valid: ok,
+    nodeTz: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    now: new Date().toString(),
+  });
+
   cron.schedule(
     INTERVAL_CRON,
     async () => {
-      if (isRunning) {
-        console.log(
-          "[weekly-reminder] previous tick still running — skipping."
-        );
-        return;
-      }
-      if (!(await tryLock(prisma))) {
-        console.log("[weekly-reminder] lock held — skipping tick");
-        return;
-      }
-
-      isRunning = true;
-      console.log("[weekly-reminder] tick start", {
-        tz: DEFAULT_TZ,
-        cron: INTERVAL_CRON,
-        ts: new Date().toISOString(),
-      });
-
+      // one big try/catch so early errors are logged
       try {
-        await sendAllWeeklyReminders(prisma);
-      } catch (e) {
-        console.error("[weekly-reminder] tick error", {
-          error: (e as Error)?.message ?? String(e),
-        });
-      } finally {
-        await unlock(prisma).catch(() => {});
-        isRunning = false;
-        console.log("[weekly-reminder] tick end", {
+        if (isRunning) {
+          console.log(
+            "[weekly-reminder] previous tick still running — skipping."
+          );
+          return;
+        }
+
+        // optional: quick heartbeat at the exact minute
+        console.log("[weekly-reminder] tick minute reached", {
           ts: new Date().toISOString(),
+        });
+
+        // cross-process guard
+        let locked = false;
+        try {
+          locked = await tryLock(prisma);
+        } catch (e) {
+          console.error("[weekly-reminder] tryLock failed", {
+            error: (e as Error)?.message ?? String(e),
+          });
+          return;
+        }
+        if (!locked) {
+          console.log("[weekly-reminder] lock held — skipping tick");
+          return;
+        }
+
+        isRunning = true;
+        console.log("[weekly-reminder] tick start", {
+          tz: DEFAULT_TZ,
+          cron: INTERVAL_CRON,
+          ts: new Date().toISOString(),
+        });
+
+        try {
+          await sendAllWeeklyReminders(prisma);
+        } finally {
+          await unlock(prisma).catch(() => {});
+          isRunning = false;
+          console.log("[weekly-reminder] tick end", {
+            ts: new Date().toISOString(),
+          });
+        }
+      } catch (e) {
+        console.error("[weekly-reminder] unhandled tick error", {
+          error: (e as Error)?.message ?? String(e),
         });
       }
     },
     { timezone: DEFAULT_TZ }
   );
-
-  console.log("[weekly-reminder] scheduler armed", {
-    tz: DEFAULT_TZ,
-    cron: INTERVAL_CRON,
-  });
+} else {
+  console.log("[weekly-reminder] scheduler disabled (CRON_ENABLED!=true)");
 }
