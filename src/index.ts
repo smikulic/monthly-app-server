@@ -101,7 +101,7 @@ console.log(`🚀  Server ready at: ${url}`);
 
 // ---- Scheduler (inside web service) ----
 const DEFAULT_TZ = process.env.DEFAULT_TZ || "Europe/Zagreb";
-const INTERVAL_CRON = (process.env.INTERVAL_CRON || "0 10 * * 7").trim();
+const INTERVAL_CRON = (process.env.INTERVAL_CRON || "0 11 * * 6").trim();
 const CRON_ENABLED = String(process.env.CRON_ENABLED) === "true";
 
 let isRunning = false;

@@ -4,10 +4,6 @@ export const getFilterDateRange = (filterDate: string) => {
   const dateGreaterThanOrEqual = new Date(filterDateYear, filterDateMonth, 1);
   const dateLessThan = new Date(filterDateYear, filterDateMonth + 1, 1);
 
-  console.log({filterDate})
-  console.log({dateGreaterThanOrEqual})
-  console.log({dateLessThan})
-
   return {
     gte: dateGreaterThanOrEqual,
     lt: dateLessThan,
