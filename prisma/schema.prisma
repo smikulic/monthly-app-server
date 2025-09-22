@@ -31,6 +31,8 @@ model Category {
   userId        String
   user          User          @relation(fields: [userId], references: [id])
   subcategories Subcategory[]
+
+  @@index([userId, createdAt], name: "idx_categories_userid_createdat")
 }
 
 model Subcategory {
@@ -44,6 +46,8 @@ model Subcategory {
   categoryId   String
   expenses     Expense[]
   category     Category  @relation(fields: [categoryId], references: [id])
+
+  @@index([categoryId], name: "idx_subcategories_categoryid")
 }
 
 model Expense {
@@ -57,6 +61,9 @@ model Expense {
   subcategoryId String
   subcategory   Subcategory @relation(fields: [subcategoryId], references: [id])
   user          User        @relation(fields: [userId], references: [id])
+
+  @@index([userId, date], name: "idx_expenses_userid_date")
+  @@index([subcategoryId, date], name: "idx_expenses_subcategoryid_date")
 }
 
 model SavingGoal {
@@ -69,6 +76,8 @@ model SavingGoal {
   goalAmount        Int
   initialSaveAmount Int
   user              User          @relation(fields: [userId], references: [id])
+
+  @@index([userId], name: "idx_savinggoals_userid")
 }
 
 model Investment {
@@ -83,4 +92,6 @@ model Investment {
   initialAmount  Int
   userId         String
   user           User      @relation(fields: [userId], references: [id])
+
+  @@index([userId], name: "idx_investments_userid")
 }
