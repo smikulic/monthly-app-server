@@ -65,9 +65,9 @@ describe("categoryResolvers", () => {
       );
 
       expect(prismaMock.category.findFirst).toHaveBeenCalledWith({
-        where: { 
+        where: {
           id: args.id,
-          userId: dummyUser.id
+          userId: dummyUser.id,
         },
       });
       expect(result).toBe(fakeCategory);
@@ -101,8 +101,8 @@ describe("categoryResolvers", () => {
       expect(prismaMock.category.findFirst).toHaveBeenCalledWith({
         where: {
           name: "NewCat",
-          userId: dummyUser.id
-        }
+          userId: dummyUser.id,
+        },
       });
       expect(prismaMock.category.create).toHaveBeenCalledWith({
         data: {
@@ -121,7 +121,12 @@ describe("categoryResolvers", () => {
       const args = { name: "NewCat" };
 
       await expect(
-        categoryResolvers.Mutation.createCategory(null, args, context, dummyInfo)
+        categoryResolvers.Mutation.createCategory(
+          null,
+          args,
+          context,
+          dummyInfo
+        )
       ).rejects.toThrow("A category with this name already exists");
     });
 
@@ -129,7 +134,12 @@ describe("categoryResolvers", () => {
       const args = { name: "" };
 
       await expect(
-        categoryResolvers.Mutation.createCategory(null, args, context, dummyInfo)
+        categoryResolvers.Mutation.createCategory(
+          null,
+          args,
+          context,
+          dummyInfo
+        )
       ).rejects.toThrow("Category name is required");
     });
   });
@@ -138,7 +148,7 @@ describe("categoryResolvers", () => {
     it("calls prisma.category.update with the correct where/data and returns the updated record", async () => {
       const fakeUpdated = { id: "cat-xyz", name: "UpdatedName" };
       const existingCategory = { userId: dummyUser.id, name: "OldName" };
-      
+
       prismaMock.category.findUnique.mockResolvedValue(existingCategory);
       prismaMock.category.findFirst.mockResolvedValue(null); // No duplicate
       prismaMock.category.update.mockResolvedValue(fakeUpdated);
@@ -153,13 +163,13 @@ describe("categoryResolvers", () => {
 
       expect(prismaMock.category.findUnique).toHaveBeenCalledWith({
         where: { id: args.id },
-        select: { userId: true, name: true }
+        select: { userId: true, name: true },
       });
       expect(prismaMock.category.update).toHaveBeenCalledWith({
         where: { id: args.id },
-        data: { 
+        data: {
           name: "UpdatedName",
-          icon: undefined 
+          icon: undefined,
         },
       });
       expect(result).toBe(fakeUpdated);
@@ -206,9 +216,31 @@ describe("categoryResolvers", () => {
   });
 
   describe("Category.subcategories", () => {
-    it("calls prisma.subcategory.findMany with the correct where/orderBy and returns the result", async () => {
+    // it("calls prisma.subcategory.findMany with the correct where/orderBy and returns the result", async () => {
+    //   const fakeSubs = [{ id: "sub1" }, { id: "sub2" }];
+    //   prismaMock.subcategory.findMany.mockResolvedValue(fakeSubs);
+
+    //   const parent = { id: "cat-123" };
+    //   const result = await categoryResolvers.Category.subcategories(
+    //     parent,
+    //     {},
+    //     context,
+    //     dummyInfo
+    //   );
+
+    //   expect(prismaMock.subcategory.findMany).toHaveBeenCalledWith({
+    //     where: { categoryId: parent.id },
+    //     orderBy: { createdAt: "asc" },
+    //   });
+    //   expect(result).toBe(fakeSubs);
+    // });
+    it("calls subcategory DataLoader with the category id and returns the result", async () => {
       const fakeSubs = [{ id: "sub1" }, { id: "sub2" }];
-      prismaMock.subcategory.findMany.mockResolvedValue(fakeSubs);
+
+      // Mock the DataLoader in context
+      context.loaders = {
+        subcategory: { load: jest.fn().mockResolvedValue(fakeSubs) },
+      };
 
       const parent = { id: "cat-123" };
       const result = await categoryResolvers.Category.subcategories(
@@ -218,10 +250,10 @@ describe("categoryResolvers", () => {
         dummyInfo
       );
 
-      expect(prismaMock.subcategory.findMany).toHaveBeenCalledWith({
-        where: { categoryId: parent.id },
-        orderBy: { createdAt: "asc" },
-      });
+      // Check that DataLoader.load was called with the categoryId
+      expect(context.loaders.subcategory.load).toHaveBeenCalledWith(parent.id);
+
+      // Check that the return value is what the DataLoader resolved
       expect(result).toBe(fakeSubs);
     });
   });

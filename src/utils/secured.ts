@@ -10,7 +10,11 @@ export interface User {
   // add other user properties here if needed
 }
 
-export type AuthContext = { currentUser: User; prisma: PrismaClient };
+export type AuthContext = {
+  loaders: any;
+  currentUser: User;
+  prisma: PrismaClient;
+};
 
 export type ResolverFn<
   Parent = any,
