@@ -138,14 +138,18 @@ export const categoryResolvers = {
     ),
   },
   Category: {
+    // subcategories: secured((parent, args, context) => {
+    //   const subcategoriesResponse = context.prisma.subcategory.findMany({
+    //     where: { categoryId: parent.id },
+    //     orderBy: {
+    //       createdAt: "asc", // or 'desc' for descending order
+    //     },
+    //   });
+    //   return subcategoriesResponse;
+    // }),
     subcategories: secured((parent, args, context) => {
-      const subcategoriesResponse = context.prisma.subcategory.findMany({
-        where: { categoryId: parent.id },
-        orderBy: {
-          createdAt: "asc", // or 'desc' for descending order
-        },
-      });
-      return subcategoriesResponse;
+      // use DataLoader instead of separate Prisma call per category
+      return context.loaders.subcategory.load(parent.id);
     }),
   },
 };
