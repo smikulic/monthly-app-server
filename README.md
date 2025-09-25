@@ -6,6 +6,8 @@ When user registers, we store the encrypted password to DB.
 Next time they login we use auth context to verify email and password with the DB records and send back request Auth token.
 If they reset a password, Postmark service will send a token over email for secure reset flow.
 
+User can also login/register via Google OAuth and if they choose to combine password and Google login, they can.
+
 Resolvers are structured in a CRUD manner (create, update, delete mutations) and read is split based on schema:
 category, subcategory, expenses (everything is scoped based on UI needs, such as `chartExpenses`).
 Every query (non public one) is protect with `is unauthenticated` check.
@@ -16,7 +18,7 @@ Prisma Schema defines our Database structure.
 
 ### Services
 
-We have a total of 5 services running.
+We have a total of 6 services running.
 
 one on *Godaddy*:
 - Domain hosting - yourmonthly.app (SSL and DNS managed within [Digital Ocean](https://cloud.digitalocean.com/networking/domains))
@@ -26,10 +28,17 @@ three on *Digital Ocean*:
   - defaultdb (*`development` DB*)
   - defaultdb-prod (*`production` DB*)
 - monthly-app-server
+  - there is a node cron worker running weekly email reminder
 - Monthly-app-client
 
-and one on *Postmark*:
-- Monthly App - Production (reset password email - template managed within [their template editor](https://account.postmarkapp.com/servers/11744691/templates))
+one on *Postmark*:
+- Monthly App - Production - templates managed within [their template editor](https://account.postmarkapp.com/servers/11744691/templates)
+  - reset password email
+  - Signup email confirmation
+  - Weekly reminder
+
+and one on *Google Cloud* for running Google OAuth login flow
+- https://console.cloud.google.com/welcome?project=monthly-app-473211
 
 ### Secrets
 - All secrets are split between `development` and `production` (managed within Digitial Ocean) environments
