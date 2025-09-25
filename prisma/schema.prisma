@@ -19,7 +19,7 @@ model User {
 
   // OAuth fields
   googleId       String?    @unique // Google's unique user ID
-  provider       String?    // 'google' or 'email'
+  provider       String?    // 'google' or 'email' or 'both'
   name           String?    // User's display name from Google
   picture        String?    // Profile picture URL from Google
 

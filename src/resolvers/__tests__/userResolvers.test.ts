@@ -27,6 +27,7 @@ jest.mock("../../helpers/emails", () => ({
 jest.mock("bcryptjs");
 jest.mock("jsonwebtoken");
 jest.mock("../../helpers/reports");
+jest.mock("../../helpers/auth");
 
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -36,6 +37,7 @@ import {
   sendPasswordResetEmail,
 } from "../../helpers/emails";
 import { generateBudgetReportPdf } from "../../helpers/reports";
+import { generateAuthToken, verifyToken } from "../../helpers/auth";
 
 describe("userResolvers", () => {
   const dummyUser = {
@@ -93,7 +95,12 @@ describe("userResolvers", () => {
       prismaMock.user.findMany.mockResolvedValue(fakeUsers);
 
       // 'users' is not secured → 3 args
-      const result = await userResolvers.Query.users(null, {}, context, dummyInfo);
+      const result = await userResolvers.Query.users(
+        null,
+        {},
+        context,
+        dummyInfo
+      );
 
       expect(result).toEqual([]);
     });
@@ -105,7 +112,12 @@ describe("userResolvers", () => {
       prismaMock.user.findFirst.mockResolvedValue(fakeUser);
 
       const args = { id: dummyUser.id };
-      const result = await userResolvers.Query.user(null, args, context, dummyInfo);
+      const result = await userResolvers.Query.user(
+        null,
+        args,
+        context,
+        dummyInfo
+      );
 
       expect(prismaMock.user.findFirst).toHaveBeenCalledWith({
         where: { id: args.id },
@@ -163,7 +175,7 @@ describe("userResolvers", () => {
       const createdUser = { ...dummyUser, id: "new-id" };
       prismaMock.user.findUnique.mockResolvedValue(null); // No existing user
       prismaMock.user.create.mockResolvedValue(createdUser);
-      (jwt.sign as jest.Mock).mockReturnValue("conf-token");
+      (generateAuthToken as jest.Mock).mockReturnValue("conf-token");
 
       const args = {
         email: "new@user.com",
@@ -175,17 +187,14 @@ describe("userResolvers", () => {
 
       expect(bcrypt.hash).toHaveBeenCalledWith(args.password, 10);
       expect(prismaMock.user.create).toHaveBeenCalledWith({
-        data: { 
+        data: {
           email: "new@user.com",
           password: "hashedpwd",
-          currency: "EUR"
+          currency: "EUR",
+          provider: "email",
         },
       });
-      expect(jwt.sign).toHaveBeenCalledWith(
-        { userId: createdUser.id },
-        process.env.JWT_SECRET,
-        { expiresIn: "24h" }
-      );
+      expect(generateAuthToken).toHaveBeenCalledWith(createdUser.id, "24h");
       expect(sendConfirmationEmail).toHaveBeenCalledWith(
         createdUser,
         "conf-token"
@@ -197,10 +206,10 @@ describe("userResolvers", () => {
   describe("Mutation.confirmEmail", () => {
     it("verifies token, updates user, signs auth token, and returns payload", async () => {
       const fakePayload = { userId: "u1" };
-      (jwt.verify as jest.Mock).mockReturnValue(fakePayload);
+      (verifyToken as jest.Mock).mockReturnValue(fakePayload);
       const updatedUser = { ...dummyUser, emailConfirmed: true };
       prismaMock.user.update.mockResolvedValue(updatedUser);
-      (jwt.sign as jest.Mock).mockReturnValue("auth-token");
+      (generateAuthToken as jest.Mock).mockReturnValue("auth-token");
 
       const args = { token: "valid-token" };
       // 'confirmEmail' is not secured → 3 args
@@ -210,24 +219,17 @@ describe("userResolvers", () => {
         context
       );
 
-      expect(jwt.verify).toHaveBeenCalledWith(
-        args.token,
-        process.env.JWT_SECRET
-      );
+      expect(verifyToken).toHaveBeenCalledWith(args.token);
       expect(prismaMock.user.update).toHaveBeenCalledWith({
         where: { id: fakePayload.userId },
         data: { emailConfirmed: true },
       });
-      expect(jwt.sign).toHaveBeenCalledWith(
-        { userId: fakePayload.userId },
-        process.env.JWT_SECRET,
-        { expiresIn: "7d" }
-      );
+      expect(generateAuthToken).toHaveBeenCalledWith(fakePayload.userId, "7d");
       expect(result).toEqual({ token: "auth-token", user: updatedUser });
     });
 
     it("throws on invalid or expired token", async () => {
-      (jwt.verify as jest.Mock).mockImplementation(() => {
+      (verifyToken as jest.Mock).mockImplementation(() => {
         throw new Error();
       });
       await expect(
@@ -276,10 +278,10 @@ describe("userResolvers", () => {
         password: "hashed",
       });
       (bcrypt.compare as jest.Mock).mockResolvedValue(true);
-      (jwt.sign as jest.Mock).mockReturnValue("login-token");
+      (generateAuthToken as jest.Mock).mockReturnValue("login-token");
 
       const result = await userResolvers.Mutation.login(null, args, context);
-      
+
       expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
         where: { email: "a@b.com" },
       });
@@ -287,11 +289,7 @@ describe("userResolvers", () => {
         token: "login-token",
         user: { ...dummyUser, password: "hashed" },
       });
-      expect(jwt.sign).toHaveBeenCalledWith(
-        { userId: dummyUser.id },
-        process.env.JWT_SECRET,
-        { expiresIn: "90d" }
-      );
+      expect(generateAuthToken).toHaveBeenCalledWith(dummyUser.id);
     });
   });
 
@@ -310,7 +308,7 @@ describe("userResolvers", () => {
     it("signs token, sends email, and returns email", async () => {
       const foundUser = { ...dummyUser };
       prismaMock.user.findUnique.mockResolvedValue(foundUser);
-      (jwt.sign as jest.Mock).mockReturnValue("reset-token");
+      (generateAuthToken as jest.Mock).mockReturnValue("reset-token");
 
       const result = await userResolvers.Mutation.resetPasswordRequest(
         null,
@@ -318,11 +316,7 @@ describe("userResolvers", () => {
         context
       );
 
-      expect(jwt.sign).toHaveBeenCalledWith(
-        { userId: foundUser.id },
-        process.env.JWT_SECRET,
-        { expiresIn: "24h" }
-      );
+      expect(generateAuthToken).toHaveBeenCalledWith(foundUser.id, "24h");
       expect(sendPasswordResetEmail).toHaveBeenCalledWith(
         foundUser,
         "reset-token"
@@ -333,7 +327,7 @@ describe("userResolvers", () => {
 
   describe("Mutation.resetPassword", () => {
     it("throws if user not found after verifying token", async () => {
-      (jwt.verify as jest.Mock).mockReturnValue({ userId: "u1" });
+      (verifyToken as jest.Mock).mockReturnValue({ userId: "u1" });
       prismaMock.user.findFirst.mockResolvedValue(null);
 
       await expect(
@@ -346,7 +340,7 @@ describe("userResolvers", () => {
     });
 
     it("hashes new password, updates user, and returns updated user", async () => {
-      (jwt.verify as jest.Mock).mockReturnValue({ userId: "u1" });
+      (verifyToken as jest.Mock).mockReturnValue({ userId: "u1" });
       prismaMock.user.findFirst.mockResolvedValue(dummyUser);
       (bcrypt.hash as jest.Mock).mockResolvedValue("newhashed");
       const updatedUser = { ...dummyUser, password: "newhashed" };
