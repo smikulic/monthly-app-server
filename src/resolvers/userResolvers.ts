@@ -1,10 +1,7 @@
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import "dotenv/config";
-import { JWT_SECRET } from "../config/constants.js";
 import { notFoundError } from "../utils/notFoundError.js";
 import { secured } from "../utils/secured.js";
-import { JwtPayload } from "../authenticateUser.js";
 import {
   sendConfirmationEmail,
   sendPasswordResetEmail,
@@ -15,6 +12,13 @@ import {
   validatePassword,
   sanitizeString,
 } from "../utils/validation.js";
+import {
+  getGoogleAuthUrl,
+  getGoogleUserInfo,
+  findOrCreateGoogleUser,
+} from "../helpers/googleOAuth.js";
+import { generateAuthToken, verifyToken } from "../helpers/auth.js";
+import { JwtPayload } from "../authenticateUser.js";
 
 export const userResolvers = {
   Query: {
@@ -39,6 +43,11 @@ export const userResolvers = {
       const userId = currentUser.id;
       return generateBudgetReportPdf(prisma, userId, year);
     }),
+    googleAuthUrl: () => {
+      return {
+        url: getGoogleAuthUrl(),
+      };
+    },
   },
   Mutation: {
     signup: async (_parent: unknown, args: any, context: any) => {
@@ -77,12 +86,11 @@ export const userResolvers = {
           email: sanitizedEmail,
           password: hashedPassword,
           currency: args.currency ? sanitizeString(args.currency, 10) : null,
+          provider: "email",
         },
       });
 
-      const confirmToken = jwt.sign({ userId: user.id }, JWT_SECRET, {
-        expiresIn: "24h",
-      });
+      const confirmToken = generateAuthToken(user.id, "24h");
 
       await sendConfirmationEmail(user, confirmToken);
 
@@ -99,7 +107,7 @@ export const userResolvers = {
       // 1) verify the confirmation JWT
       let payload: JwtPayload;
       try {
-        payload = jwt.verify(token, JWT_SECRET) as JwtPayload;
+        payload = verifyToken(token);
       } catch (e) {
         throw new Error("Invalid or expired confirmation link");
       }
@@ -111,10 +119,8 @@ export const userResolvers = {
         data: { emailConfirmed: true },
       });
 
-      // 3) now they’re “activated” → issue a real auth token
-      const authToken = jwt.sign({ userId }, JWT_SECRET, {
-        expiresIn: "7d", // Token expires in 7 days
-      });
+      // 3) now they're "activated" → issue a real auth token
+      const authToken = generateAuthToken(userId, "7d");
 
       return {
         token: authToken,
@@ -135,24 +141,53 @@ export const userResolvers = {
       });
       if (!user) notFoundError("User");
 
+      // Check if user signed up with OAuth only (no password set)
+      if (!user.password) {
+        throw new Error(
+          "This account uses Google sign-in. Please use the 'Sign in with Google' button instead."
+        );
+      }
+
       const valid = await bcrypt.compare(args.password, user.password);
       if (!valid) {
         throw new Error("Invalid password");
       }
 
       if (!user.emailConfirmed) {
-        // stop login here if they haven’t confirmed yet
+        // stop login here if they haven't confirmed yet
         throw new Error("Please confirm your email before logging in");
       }
 
-      const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
-        expiresIn: "90d", // Token expires in 90 days
-      });
+      const token = generateAuthToken(user.id);
 
       return {
         token,
         user,
       };
+    },
+    googleLogin: async (
+      _parent: unknown,
+      { code }: { code: string },
+      context: any
+    ) => {
+      try {
+        // Get user info from Google
+        const googleUser = await getGoogleUserInfo(code);
+
+        // Find or create user in our database
+        const user = await findOrCreateGoogleUser(context.prisma, googleUser);
+
+        // Generate auth token
+        const token = generateAuthToken(user.id);
+
+        return {
+          token,
+          user,
+        };
+      } catch (error: any) {
+        console.error("Google login error:", error);
+        throw new Error(`Google login failed: ${error.message}`);
+      }
     },
     resetPasswordRequest: async (_parent: unknown, args: any, context: any) => {
       const user = await context.prisma.user.findUnique({
@@ -161,9 +196,14 @@ export const userResolvers = {
 
       if (!user) notFoundError("User");
 
-      const token = jwt.sign({ userId: user.id }, JWT_SECRET, {
-        expiresIn: "24h",
-      });
+      // Check if user signed up with OAuth only (no password)
+      if (!user.password && user.provider === "google") {
+        throw new Error(
+          "This account uses Google sign-in. Please use the 'Sign in with Google' button instead."
+        );
+      }
+
+      const token = generateAuthToken(user.id, "24h");
 
       // Send email to user with url and token
       await sendPasswordResetEmail(user, token);
@@ -174,15 +214,22 @@ export const userResolvers = {
     },
     resetPassword: async (parent: any, args: any, context: any) => {
       // Verify token and check if the user exist
-      const { userId } = jwt.verify(args.token, JWT_SECRET) as JwtPayload;
+      const { userId } = verifyToken(args.token);
 
-      const userExists = !!(await context.prisma.user.findFirst({
+      const user = await context.prisma.user.findFirst({
         where: {
           id: userId,
         },
-      }));
+      });
 
-      if (!userExists) notFoundError("User");
+      if (!user) notFoundError("User");
+
+      // Check if user is OAuth-only
+      if (!user.password && user.provider === "google") {
+        throw new Error(
+          "Cannot reset password for Google sign-in accounts. Please use 'Sign in with Google' instead."
+        );
+      }
 
       // If no error, set new password.
       const newPassword = await bcrypt.hash(args.password, 10);
@@ -194,6 +241,43 @@ export const userResolvers = {
 
       return updatedUser;
     },
+    setPassword: secured(async (_parent: unknown, args: any, context: any) => {
+      const userId = context.currentUser.id;
+
+      // Validate password
+      const passwordValidation = validatePassword(args.password);
+      if (!passwordValidation.isValid) {
+        throw new Error(
+          `Password validation failed: ${passwordValidation.errors.join(", ")}`
+        );
+      }
+
+      // Check if user already has a password
+      const user = await context.prisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) notFoundError("User");
+
+      if (user.password) {
+        throw new Error(
+          "Password already set. Use password reset if you want to change it."
+        );
+      }
+
+      // Hash and set the password
+      const hashedPassword = await bcrypt.hash(args.password, 10);
+
+      const updatedUser = await context.prisma.user.update({
+        where: { id: userId },
+        data: {
+          password: hashedPassword,
+          provider: "both", // User can now use both OAuth and email/password
+        },
+      });
+
+      return updatedUser;
+    }),
     updateUser: secured(async (parent, args, context) => {
       // Ensure user can only update their own profile
       if (args.id !== context.currentUser.id) {
@@ -251,5 +335,8 @@ export const userResolvers = {
   User: {
     id: (parent: any, args: any, context: any, info: any) => parent.id,
     email: (parent: any) => parent.email,
+    provider: (parent: any) => parent.provider,
+    name: (parent: any) => parent.name,
+    picture: (parent: any) => parent.picture,
   },
 };
