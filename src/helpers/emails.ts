@@ -34,7 +34,7 @@ export async function sendPasswordResetEmail(
     TemplateAlias: "password-reset",
     TemplateModel: {
       product_name: "Monthly App",
-      action_url: `https://yourmonthly.app/reset-password?resetToken=${token}`,
+      action_url: `https://app.yourmonthly.app/reset-password?resetToken=${token}`,
       support_url: "support@yourmonthly.app",
     },
     MessageStream: "outbound",
