@@ -10,8 +10,12 @@ import {
 export const subcategoryResolvers = {
   Query: {
     subcategory: secured(async (parent, args, context) => {
+      // Scope by the parent category's owner so users only read their own
       const subcategoryResponse = await context.prisma.subcategory.findFirst({
-        where: { id: args.id },
+        where: {
+          id: args.id,
+          category: { userId: context.currentUser.id },
+        },
       });
 
       if (!subcategoryResponse) {
@@ -74,6 +78,30 @@ export const subcategoryResolvers = {
       });
     }),
     updateSubcategory: secured(async (parent, args, context) => {
+      // Verify the subcategory belongs to the user (via its parent category)
+      const existingSubcategory = await context.prisma.subcategory.findFirst({
+        where: {
+          id: args.id,
+          category: { userId: context.currentUser.id },
+        },
+        select: { id: true },
+      });
+
+      if (!existingSubcategory) {
+        throw new Error("Subcategory not found or doesn't belong to user");
+      }
+
+      // If reassigning to a category, verify that category also belongs to user
+      if (args.categoryId) {
+        const category = await context.prisma.category.findFirst({
+          where: { id: args.categoryId, userId: context.currentUser.id },
+        });
+
+        if (!category) {
+          throw new Error("Category not found or doesn't belong to user");
+        }
+      }
+
       const [y, m, d] = args.rolloverDate.split("-").map(Number);
       const dateForStorage = new Date(Date.UTC(y, m - 1, d));
 
@@ -91,16 +119,24 @@ export const subcategoryResolvers = {
     }),
     deleteSubcategory: secured(
       async (_parent, args: { id: string }, context, _info) => {
-        const deleteSubcategoryResponse =
-          await context.prisma.subcategory.delete({
-            where: {
-              id: args.id,
-            },
-          });
+        // Verify ownership (via parent category) before deleting
+        const existingSubcategory = await context.prisma.subcategory.findFirst({
+          where: {
+            id: args.id,
+            category: { userId: context.currentUser.id },
+          },
+          select: { id: true },
+        });
 
-        if (!deleteSubcategoryResponse) notFoundError("Subcategory");
+        if (!existingSubcategory) {
+          notFoundError("Subcategory");
+        }
 
-        return deleteSubcategoryResponse;
+        return await context.prisma.subcategory.delete({
+          where: {
+            id: args.id,
+          },
+        });
       }
     ),
   },

@@ -64,7 +64,10 @@ describe("subcategoryResolvers", () => {
       );
 
       expect(prismaMock.subcategory.findFirst).toHaveBeenCalledWith({
-        where: { id: args.id },
+        where: {
+          id: args.id,
+          category: { userId: dummyUser.id },
+        },
       });
       expect(result).toBe(fakeSub);
     });
@@ -133,6 +136,8 @@ describe("subcategoryResolvers", () => {
         rolloverDate: "2022-09-01T00:00:00.000Z",
         categoryId: "cat-456",
       };
+      prismaMock.subcategory.findFirst.mockResolvedValue({ id: "sub-xyz" });
+      prismaMock.category.findFirst.mockResolvedValue({ id: "cat-456" });
       prismaMock.subcategory.update.mockResolvedValue(fakeUpdated);
 
       const args = {
@@ -163,11 +168,57 @@ describe("subcategoryResolvers", () => {
       });
       expect(result).toBe(fakeUpdated);
     });
+
+    it("throws when the subcategory does not belong to the user", async () => {
+      prismaMock.subcategory.findFirst.mockResolvedValue(null);
+
+      const args = {
+        id: "someone-elses-sub",
+        name: "UpdatedSub",
+        budgetAmount: 750,
+        rolloverDate: "2022-09-01",
+        categoryId: "cat-456",
+      };
+
+      await expect(
+        subcategoryResolvers.Mutation.updateSubcategory(
+          null,
+          args,
+          context,
+          dummyInfo
+        )
+      ).rejects.toThrowError("Subcategory not found or doesn't belong to user");
+      expect(prismaMock.subcategory.update).not.toHaveBeenCalled();
+    });
+
+    it("throws when the target category does not belong to the user", async () => {
+      prismaMock.subcategory.findFirst.mockResolvedValue({ id: "sub-xyz" });
+      prismaMock.category.findFirst.mockResolvedValue(null);
+
+      const args = {
+        id: "sub-xyz",
+        name: "UpdatedSub",
+        budgetAmount: 750,
+        rolloverDate: "2022-09-01",
+        categoryId: "someone-elses-cat",
+      };
+
+      await expect(
+        subcategoryResolvers.Mutation.updateSubcategory(
+          null,
+          args,
+          context,
+          dummyInfo
+        )
+      ).rejects.toThrowError("Category not found or doesn't belong to user");
+      expect(prismaMock.subcategory.update).not.toHaveBeenCalled();
+    });
   });
 
   describe("Mutation.deleteSubcategory", () => {
     it("calls prisma.subcategory.delete and returns the deleted record", async () => {
       const fakeDeleted = { id: "sub-del", name: "ToDelete" };
+      prismaMock.subcategory.findFirst.mockResolvedValue({ id: "sub-del" });
       prismaMock.subcategory.delete.mockResolvedValue(fakeDeleted);
 
       const args = { id: "sub-del" };
@@ -178,14 +229,21 @@ describe("subcategoryResolvers", () => {
         dummyInfo
       );
 
+      expect(prismaMock.subcategory.findFirst).toHaveBeenCalledWith({
+        where: {
+          id: args.id,
+          category: { userId: dummyUser.id },
+        },
+        select: { id: true },
+      });
       expect(prismaMock.subcategory.delete).toHaveBeenCalledWith({
         where: { id: args.id },
       });
       expect(result).toBe(fakeDeleted);
     });
 
-    it("throws notFoundError when prisma.subcategory.delete resolves to null", async () => {
-      prismaMock.subcategory.delete.mockResolvedValue(null);
+    it("throws notFoundError when the subcategory is not owned by the user", async () => {
+      prismaMock.subcategory.findFirst.mockResolvedValue(null);
       const args = { id: "missing-sub" };
 
       await expect(
@@ -196,6 +254,7 @@ describe("subcategoryResolvers", () => {
           dummyInfo
         )
       ).rejects.toThrowError(new Error("No such Subcategory found"));
+      expect(prismaMock.subcategory.delete).not.toHaveBeenCalled();
     });
   });
 

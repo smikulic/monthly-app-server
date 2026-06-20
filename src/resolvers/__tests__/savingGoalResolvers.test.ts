@@ -14,6 +14,7 @@ describe("savingGoalResolvers", () => {
   let prismaMock: {
     savingGoal: {
       findMany: jest.Mock;
+      findFirst: jest.Mock;
       create: jest.Mock;
       update: jest.Mock;
       delete: jest.Mock;
@@ -27,6 +28,7 @@ describe("savingGoalResolvers", () => {
     prismaMock = {
       savingGoal: {
         findMany: jest.fn(),
+        findFirst: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
         delete: jest.fn(),
@@ -139,6 +141,7 @@ describe("savingGoalResolvers", () => {
         goalAmount: 2000,
         initialSaveAmount: 200,
       };
+      prismaMock.savingGoal.findFirst.mockResolvedValue({ id: "g1" });
       prismaMock.savingGoal.update.mockResolvedValue(fakeUpdated);
 
       const args = {
@@ -170,6 +173,28 @@ describe("savingGoalResolvers", () => {
       expect(result).toBe(fakeUpdated);
     });
 
+    it("throws when the saving goal does not belong to the user", async () => {
+      prismaMock.savingGoal.findFirst.mockResolvedValue(null);
+
+      const args = {
+        id: "someone-elses-goal",
+        name: "X",
+        goalDate: "2024-06-30",
+        goalAmount: 2000,
+        initialSaveAmount: 200,
+      };
+
+      await expect(
+        savingGoalResolvers.Mutation.updateSavingGoal(
+          null,
+          args,
+          context,
+          dummyInfo
+        )
+      ).rejects.toThrowError("Saving goal not found or doesn't belong to user");
+      expect(prismaMock.savingGoal.update).not.toHaveBeenCalled();
+    });
+
     it("throws if not authenticated", async () => {
       const badContext = { ...context, currentUser: null };
       const args = {
@@ -193,6 +218,7 @@ describe("savingGoalResolvers", () => {
   describe("Mutation.deleteSavingGoal", () => {
     it("calls prisma.savingGoal.delete and returns deleted record", async () => {
       const fakeDeleted = { id: "g1", name: "ToDelete" };
+      prismaMock.savingGoal.findFirst.mockResolvedValue({ id: "g1" });
       prismaMock.savingGoal.delete.mockResolvedValue(fakeDeleted);
 
       const args = { id: "g1" };
@@ -203,14 +229,18 @@ describe("savingGoalResolvers", () => {
         dummyInfo
       );
 
+      expect(prismaMock.savingGoal.findFirst).toHaveBeenCalledWith({
+        where: { id: args.id, userId: dummyUser.id },
+        select: { id: true },
+      });
       expect(prismaMock.savingGoal.delete).toHaveBeenCalledWith({
         where: { id: args.id },
       });
       expect(result).toBe(fakeDeleted);
     });
 
-    it("throws notFoundError when prisma.savingGoal.delete resolves to null", async () => {
-      prismaMock.savingGoal.delete.mockResolvedValue(null);
+    it("throws notFoundError when the saving goal is not owned by the user", async () => {
+      prismaMock.savingGoal.findFirst.mockResolvedValue(null);
       const args = { id: "missing-goal" };
 
       await expect(
@@ -221,6 +251,7 @@ describe("savingGoalResolvers", () => {
           dummyInfo
         )
       ).rejects.toThrowError(new Error("No such Saving Goal found"));
+      expect(prismaMock.savingGoal.delete).not.toHaveBeenCalled();
     });
 
     it("throws if not authenticated", async () => {

@@ -77,6 +77,16 @@ export const savingGoalResolvers = {
       });
     }),
     updateSavingGoal: secured(async (parent, args, context) => {
+      // Verify the saving goal belongs to the user
+      const existingSavingGoal = await context.prisma.savingGoal.findFirst({
+        where: { id: args.id, userId: context.currentUser.id },
+        select: { id: true },
+      });
+
+      if (!existingSavingGoal) {
+        throw new Error("Saving goal not found or doesn't belong to user");
+      }
+
       const [y, m, d] = args.goalDate.split("-").map(Number);
       const dateForStorage = new Date(Date.UTC(y, m - 1, d));
 
@@ -93,15 +103,21 @@ export const savingGoalResolvers = {
       });
     }),
     deleteSavingGoal: secured(async (parent, args, context) => {
-      const deleteSavingGoalResponse = await context.prisma.savingGoal.delete({
+      // Verify ownership before deleting
+      const existingSavingGoal = await context.prisma.savingGoal.findFirst({
+        where: { id: args.id, userId: context.currentUser.id },
+        select: { id: true },
+      });
+
+      if (!existingSavingGoal) {
+        notFoundError("Saving Goal");
+      }
+
+      return await context.prisma.savingGoal.delete({
         where: {
           id: args.id,
         },
       });
-
-      if (!deleteSavingGoalResponse) notFoundError("Saving Goal");
-
-      return deleteSavingGoalResponse;
     }),
   },
 };
