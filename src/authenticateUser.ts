@@ -38,7 +38,10 @@ export async function authenticateUser(
   // Verify the token. If it fails, jwt.verify will throw.
   let payload: JwtPayload;
   try {
-    payload = jwt.verify(token, process.env.JWT_SECRET as string) as JwtPayload;
+    // Pin the algorithm to prevent algorithm-confusion attacks
+    payload = jwt.verify(token, process.env.JWT_SECRET as string, {
+      algorithms: ["HS256"],
+    }) as JwtPayload;
   } catch (err) {
     // Token invalid / expired / malformed
     return null;

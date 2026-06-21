@@ -8,9 +8,13 @@ export function generateAuthToken(
 ): string {
   return jwt.sign({ userId }, JWT_SECRET, {
     expiresIn,
+    algorithm: "HS256",
   });
 }
 
 export function verifyToken(token: string): JwtPayload {
-  return jwt.verify(token, JWT_SECRET) as JwtPayload;
+  // Pin the algorithm to prevent algorithm-confusion attacks
+  return jwt.verify(token, JWT_SECRET, {
+    algorithms: ["HS256"],
+  }) as JwtPayload;
 }
