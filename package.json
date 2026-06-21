@@ -11,8 +11,8 @@
   "type": "module",
   "scripts": {
     "prisma-studio": "npx prisma studio",
-    "build:tsc": "tsc",
-    "build": "prisma generate && prisma migrate deploy && tsc",
+    "build:tsc": "tsc -p tsconfig.build.json",
+    "build": "prisma generate && prisma migrate deploy && tsc -p tsconfig.build.json",
     "dev": "tsx watch src/start.ts",
     "start": "node dist/start.js",
     "test": "jest",
