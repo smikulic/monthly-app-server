@@ -32,6 +32,12 @@ describe("expenseResolvers", () => {
       findMany: jest.Mock;
       findUnique: jest.Mock;
     };
+    groupMember: {
+      findUnique: jest.Mock;
+    };
+    user: {
+      findUnique: jest.Mock;
+    };
   };
   let context: any;
 
@@ -47,6 +53,12 @@ describe("expenseResolvers", () => {
       },
       subcategory: {
         findMany: jest.fn(),
+        findUnique: jest.fn(),
+      },
+      groupMember: {
+        findUnique: jest.fn(),
+      },
+      user: {
         findUnique: jest.fn(),
       },
     };
@@ -318,6 +330,98 @@ describe("expenseResolvers", () => {
         ),
       ).rejects.toThrow("No such Expense found");
       expect(prismaMock.expense.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("paidBy attribution", () => {
+    it("lets you attribute an expense to another member of a shared category", async () => {
+      const ctx = { ...context, groups: [{ groupId: "g1", role: "MEMBER" }] };
+      prismaMock.subcategory.findUnique.mockResolvedValue({
+        category: { userId: "creator", groupId: "g1" },
+      });
+      prismaMock.groupMember.findUnique.mockResolvedValue({ id: "m" }); // payer is a member
+      prismaMock.expense.create.mockResolvedValue({ id: "exp" });
+
+      await expenseResolvers.Mutation.createExpense(
+        null,
+        {
+          amount: 120,
+          date: "2026-05-01",
+          subcategoryId: "sub-baby",
+          paidByUserId: "partner-id",
+        },
+        ctx,
+        dummyInfo,
+      );
+
+      expect(prismaMock.groupMember.findUnique).toHaveBeenCalledWith({
+        where: { groupId_userId: { groupId: "g1", userId: "partner-id" } },
+      });
+      expect(prismaMock.expense.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            user: { connect: { id: "partner-id" } },
+          }),
+        }),
+      );
+    });
+
+    it("rejects a different payer on a personal category", async () => {
+      prismaMock.subcategory.findUnique.mockResolvedValue({
+        category: ownedCategory,
+      });
+
+      await expect(
+        expenseResolvers.Mutation.createExpense(
+          null,
+          {
+            amount: 50,
+            date: "2026-05-01",
+            subcategoryId: "sub-personal",
+            paidByUserId: "someone-else",
+          },
+          context,
+          dummyInfo,
+        ),
+      ).rejects.toThrow("Cannot set a different payer on a personal category");
+    });
+
+    it("rejects a payer who is not a member of the group", async () => {
+      const ctx = { ...context, groups: [{ groupId: "g1", role: "MEMBER" }] };
+      prismaMock.subcategory.findUnique.mockResolvedValue({
+        category: { userId: "creator", groupId: "g1" },
+      });
+      prismaMock.groupMember.findUnique.mockResolvedValue(null); // not a member
+
+      await expect(
+        expenseResolvers.Mutation.createExpense(
+          null,
+          {
+            amount: 50,
+            date: "2026-05-01",
+            subcategoryId: "sub-baby",
+            paidByUserId: "stranger",
+          },
+          ctx,
+          dummyInfo,
+        ),
+      ).rejects.toThrow("The payer must be a member of the group");
+    });
+
+    it("Expense.paidBy resolves the payer from the stored userId", async () => {
+      prismaMock.user.findUnique.mockResolvedValue({ id: "u9", name: "Pat" });
+
+      const result = await expenseResolvers.Expense.paidBy(
+        { userId: "u9" },
+        {},
+        context,
+        dummyInfo,
+      );
+
+      expect(prismaMock.user.findUnique).toHaveBeenCalledWith({
+        where: { id: "u9" },
+      });
+      expect(result).toEqual({ id: "u9", name: "Pat" });
     });
   });
 });

@@ -1,12 +1,38 @@
 import { notFoundError } from "../utils/notFoundError.js";
 import { getFilterDateRange } from "../utils/getFilterDateRange.js";
 import { secured } from "../utils/secured.js";
+import type { AuthContext } from "../utils/secured.js";
 import { categoryScopeWhere, canAccessCategory } from "../utils/scope.js";
 import {
   sanitizeString,
   validatePositiveInteger,
   validateDate,
 } from "../utils/validation.js";
+
+// Resolve who paid an expense. Defaults to the caller. A different payer is only
+// allowed when the category is shared with a group, and that payer is a member.
+async function resolvePaidByUserId(
+  context: AuthContext,
+  category: { groupId: string | null },
+  requestedPayerId: string | undefined,
+): Promise<string> {
+  const callerId = context.currentUser.id;
+  if (!requestedPayerId || requestedPayerId === callerId) {
+    return callerId;
+  }
+  if (!category.groupId) {
+    throw new Error("Cannot set a different payer on a personal category");
+  }
+  const member = await context.prisma.groupMember.findUnique({
+    where: {
+      groupId_userId: { groupId: category.groupId, userId: requestedPayerId },
+    },
+  });
+  if (!member) {
+    throw new Error("The payer must be a member of the group");
+  }
+  return requestedPayerId;
+}
 
 export const expenseResolvers = {
   Query: {
@@ -127,6 +153,13 @@ export const expenseResolvers = {
         throw new Error("Subcategory not found or doesn't belong to user");
       }
 
+      // Who paid (attribution): the caller by default, or another group member.
+      const paidByUserId = await resolvePaidByUserId(
+        context,
+        subcategory.category,
+        args.paidByUserId,
+      );
+
       const [y, m, d] = args.date.split("-").map(Number);
       const dateForStorage = new Date(Date.UTC(y, m - 1, d));
 
@@ -138,7 +171,7 @@ export const expenseResolvers = {
             : null,
           date: dateForStorage,
           // userId records who paid / entered the expense (attribution).
-          user: { connect: { id: context.currentUser.id } },
+          user: { connect: { id: paidByUserId } },
           subcategory: { connect: { id: args.subcategoryId } },
         },
       });
@@ -186,6 +219,10 @@ export const expenseResolvers = {
         dateForStorage = new Date(Date.UTC(y, m - 1, d));
       }
 
+      // The category the expense will belong to (its current one, or the new
+      // one if moving subcategory). Used to validate the payer.
+      let targetCategory = existingExpense.subcategory.category;
+
       // If moving to another subcategory, verify access to it too
       if (args.subcategoryId !== undefined) {
         if (!args.subcategoryId || typeof args.subcategoryId !== "string") {
@@ -200,6 +237,18 @@ export const expenseResolvers = {
         if (!subcategory || !canAccessCategory(subcategory.category, context)) {
           throw new Error("Subcategory not found or doesn't belong to user");
         }
+        targetCategory = subcategory.category;
+      }
+
+      // Re-attribute the payer only when explicitly provided.
+      let payerConnect = undefined;
+      if (args.paidByUserId !== undefined) {
+        const payerId = await resolvePaidByUserId(
+          context,
+          targetCategory,
+          args.paidByUserId,
+        );
+        payerConnect = { connect: { id: payerId } };
       }
 
       return await context.prisma.expense.update({
@@ -215,6 +264,7 @@ export const expenseResolvers = {
           subcategory: args.subcategoryId
             ? { connect: { id: args.subcategoryId } }
             : undefined,
+          user: payerConnect,
         },
       });
     }),
@@ -240,5 +290,11 @@ export const expenseResolvers = {
 
       return { id: args.id }; // Return minimal data for confirmation
     }),
+  },
+  Expense: {
+    // userId stores who paid; resolve it to the member for display/attribution.
+    paidBy: secured((parent, _args, context) =>
+      context.prisma.user.findUnique({ where: { id: parent.userId } }),
+    ),
   },
 };
