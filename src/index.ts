@@ -12,12 +12,14 @@ import { categoryTypeDefs } from "./schemas/categorySchemas.js";
 import { subcategoryTypeDefs } from "./schemas/subcategorySchemas.js";
 import { savingGoalTypeDefs } from "./schemas/savingGoalSchemas.js";
 import { investmentTypeDefs } from "./schemas/investmentSchemas.js";
+import { groupTypeDefs } from "./schemas/groupSchemas.js";
 import { userResolvers } from "./resolvers/userResolvers.js";
 import { expenseResolvers } from "./resolvers/expenseResolvers.js";
 import { categoryResolvers } from "./resolvers/categoryResolvers.js";
 import { subcategoryResolvers } from "./resolvers/subcategoryResolvers.js";
 import { savingGoalResolvers } from "./resolvers/savingGoalResolvers.js";
 import { investmentResolvers } from "./resolvers/investmentResolvers.js";
+import { groupResolvers } from "./resolvers/groupResolvers.js";
 
 import { prisma } from "./context.js";
 import { tryLock, unlock } from "./utils/advisoryLock.js";
@@ -65,7 +67,8 @@ const server = new ApolloServer({
     categoryResolvers,
     subcategoryResolvers,
     savingGoalResolvers,
-    investmentResolvers
+    investmentResolvers,
+    groupResolvers,
   ),
   typeDefs: [
     Query,
@@ -75,6 +78,7 @@ const server = new ApolloServer({
     subcategoryTypeDefs,
     savingGoalTypeDefs,
     investmentTypeDefs,
+    groupTypeDefs,
   ],
   // Disable CSRF prevention to fix frontend refresh issues
   // Alternative security: JWT tokens + proper CORS + input validation already implemented
@@ -129,7 +133,7 @@ if (CRON_ENABLED) {
       try {
         if (isRunning) {
           console.log(
-            "[weekly-reminder] previous tick still running — skipping."
+            "[weekly-reminder] previous tick still running — skipping.",
           );
           return;
         }
@@ -176,7 +180,7 @@ if (CRON_ENABLED) {
         });
       }
     },
-    { timezone: DEFAULT_TZ }
+    { timezone: DEFAULT_TZ },
   );
 } else {
   console.log("[weekly-reminder] scheduler disabled (CRON_ENABLED!=true)");

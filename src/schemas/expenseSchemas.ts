@@ -5,6 +5,7 @@ export const expenseTypeDefs = `
     date: String!
     amount: Int!
     description: String
+    paidBy: User
   }
 
   type CategoryExpenseTotal {
@@ -19,18 +20,33 @@ export const expenseTypeDefs = `
   }
 
   extend type Query {
-    expenses(filter: ExpenseFilterInput): [Expense!]!
-    chartExpenses(filter: ExpenseFilterInput): ChartExpensesPayload!
+    expenses(
+      filter: ExpenseFilterInput
+      scope: ScopeMode
+      groupId: ID
+    ): [Expense!]!
+    chartExpenses(
+      filter: ExpenseFilterInput
+      scope: ScopeMode
+      groupId: ID
+    ): ChartExpensesPayload!
   }
 
   extend type Mutation {
-    createExpense(subcategoryId: ID!, amount: Int!, description: String, date: String!): Expense!
+    createExpense(
+      subcategoryId: ID!
+      amount: Int!
+      description: String
+      date: String!
+      paidByUserId: ID
+    ): Expense!
     updateExpense(
       id: ID!
       subcategoryId: ID!
       amount: Int!
       description: String
       date: String!
+      paidByUserId: ID
     ): Expense!
     deleteExpense(id: ID!): Expense!
   }
