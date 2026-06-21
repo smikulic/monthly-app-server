@@ -6,7 +6,12 @@ import {
   sendConfirmationEmail,
   sendPasswordResetEmail,
 } from "../helpers/emails.js";
-import { generateBudgetReportPdf } from "../helpers/reports.js";
+import {
+  generateBudgetReportPdf,
+  generateExpensesCsv,
+  generateFullExportJson,
+} from "../helpers/reports.js";
+import { importUserData } from "../helpers/importData.js";
 import {
   validateEmail,
   validatePassword,
@@ -43,6 +48,14 @@ export const userResolvers = {
       const userId = currentUser.id;
       return generateBudgetReportPdf(prisma, userId, year);
     }),
+    generateCsvReport: secured(async (_parent: unknown, { year }, context) => {
+      const { prisma, currentUser } = context;
+      return generateExpensesCsv(prisma, currentUser.id, year);
+    }),
+    generateDataExport: secured(async (_parent: unknown, _args, context) => {
+      const { prisma, currentUser } = context;
+      return generateFullExportJson(prisma, currentUser.id);
+    }),
     googleAuthUrl: () => {
       return {
         url: getGoogleAuthUrl(),
@@ -55,7 +68,7 @@ export const userResolvers = {
       const emailValidation = validateEmail(args.email);
       if (!emailValidation.isValid) {
         throw new Error(
-          `Email validation failed: ${emailValidation.errors.join(", ")}`
+          `Email validation failed: ${emailValidation.errors.join(", ")}`,
         );
       }
 
@@ -63,7 +76,7 @@ export const userResolvers = {
       const passwordValidation = validatePassword(args.password);
       if (!passwordValidation.isValid) {
         throw new Error(
-          `Password validation failed: ${passwordValidation.errors.join(", ")}`
+          `Password validation failed: ${passwordValidation.errors.join(", ")}`,
         );
       }
 
@@ -102,7 +115,7 @@ export const userResolvers = {
     confirmEmail: async (
       _parent: unknown,
       { token }: { token: string },
-      context: any
+      context: any,
     ) => {
       // 1) verify the confirmation JWT
       let payload: JwtPayload;
@@ -144,7 +157,7 @@ export const userResolvers = {
       // Check if user signed up with OAuth only (no password set)
       if (!user.password) {
         throw new Error(
-          "This account uses Google sign-in. Please use the 'Sign in with Google' button instead."
+          "This account uses Google sign-in. Please use the 'Sign in with Google' button instead.",
         );
       }
 
@@ -168,7 +181,7 @@ export const userResolvers = {
     googleLogin: async (
       _parent: unknown,
       { code }: { code: string },
-      context: any
+      context: any,
     ) => {
       try {
         // Get user info from Google
@@ -199,7 +212,7 @@ export const userResolvers = {
       // Check if user signed up with OAuth only (no password)
       if (!user.password && user.provider === "google") {
         throw new Error(
-          "This account uses Google sign-in. Please use the 'Sign in with Google' button instead."
+          "This account uses Google sign-in. Please use the 'Sign in with Google' button instead.",
         );
       }
 
@@ -227,7 +240,7 @@ export const userResolvers = {
       // Check if user is OAuth-only
       if (!user.password && user.provider === "google") {
         throw new Error(
-          "Cannot reset password for Google sign-in accounts. Please use 'Sign in with Google' instead."
+          "Cannot reset password for Google sign-in accounts. Please use 'Sign in with Google' instead.",
         );
       }
 
@@ -248,7 +261,7 @@ export const userResolvers = {
       const passwordValidation = validatePassword(args.password);
       if (!passwordValidation.isValid) {
         throw new Error(
-          `Password validation failed: ${passwordValidation.errors.join(", ")}`
+          `Password validation failed: ${passwordValidation.errors.join(", ")}`,
         );
       }
 
@@ -261,7 +274,7 @@ export const userResolvers = {
 
       if (user.password) {
         throw new Error(
-          "Password already set. Use password reset if you want to change it."
+          "Password already set. Use password reset if you want to change it.",
         );
       }
 
@@ -331,6 +344,12 @@ export const userResolvers = {
       // 4. Let the client know it worked
       return true;
     }),
+    importData: secured(
+      async (_parent: unknown, { payload, mode }, context) => {
+        const { prisma, currentUser } = context;
+        return importUserData(prisma, currentUser.id, payload, mode);
+      },
+    ),
   },
   User: {
     id: (parent: any, args: any, context: any, info: any) => parent.id,
