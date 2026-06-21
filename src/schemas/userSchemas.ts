@@ -26,6 +26,19 @@ export const userTypeDefs = `
     email: String!
   }
 
+  enum ImportMode {
+    MERGE
+    REPLACE
+  }
+
+  type ImportResult {
+    categories: Int!
+    subcategories: Int!
+    expenses: Int!
+    savingGoals: Int!
+    investments: Int!
+  }
+
   input ExpenseFilterInput {
     date: String!
   }
@@ -35,6 +48,8 @@ export const userTypeDefs = `
     user(id: ID!): User!
     me: User!
     generateReport(year: Int!): String!
+    generateCsvReport(year: Int!): String!
+    generateDataExport: String!
     googleAuthUrl: GoogleAuthUrl!
   }
 
@@ -49,5 +64,7 @@ export const userTypeDefs = `
     updateUser(id: ID!, currency: String!, weeklyReminder: Boolean!): User!
     # Deletes the currently-authenticated user and all their data.
     deleteAccount: Boolean!
+    # Imports a JSON data export. MERGE upserts; REPLACE wipes the user's data first.
+    importData(payload: String!, mode: ImportMode!): ImportResult!
   }
 `;

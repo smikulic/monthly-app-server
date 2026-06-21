@@ -6,7 +6,7 @@ import { WritableStreamBuffer } from "stream-buffers";
 export async function generateBudgetReportPdf(
   prisma: PrismaClient,
   userId: string,
-  year: number
+  year: number,
 ): Promise<string> {
   // --- Data Aggregation ---
   const start = new Date(year, 0, 1);
@@ -29,7 +29,7 @@ export async function generateBudgetReportPdf(
   });
   const totalMonthlyBudget = subscriptionBudgets.reduce(
     (sum, sub) => sum + sub.budgetAmount,
-    0
+    0,
   );
   const monthlyBudgets = Array(12).fill(totalMonthlyBudget);
 
@@ -143,4 +143,153 @@ export async function generateBudgetReportPdf(
       reject(err);
     }
   });
+}
+
+// Helper: Generate a CSV export of a user's expenses for a year, base64-encoded.
+// Returns base64 (like the PDF report) so the client downloads it the same way.
+export async function generateExpensesCsv(
+  prisma: PrismaClient,
+  userId: string,
+  year: number,
+): Promise<string> {
+  const start = new Date(year, 0, 1);
+  const end = new Date(year + 1, 0, 1);
+
+  const expenses = await prisma.expense.findMany({
+    where: { userId, date: { gte: start, lt: end } },
+    orderBy: { date: "asc" },
+    select: {
+      date: true,
+      amount: true,
+      description: true,
+      subcategory: {
+        select: { name: true, category: { select: { name: true } } },
+      },
+    },
+  });
+
+  // Escape a single CSV field per RFC 4180.
+  const escapeField = (value: string): string => {
+    const escaped = value.replace(/"/g, '""');
+    return /[",\n\r]/.test(value) ? `"${escaped}"` : escaped;
+  };
+
+  const header = ["Date", "Category", "Subcategory", "Description", "Amount"];
+  const rows = expenses.map((e) => [
+    e.date.toISOString().slice(0, 10),
+    e.subcategory?.category?.name ?? "",
+    e.subcategory?.name ?? "",
+    e.description ?? "",
+    String(e.amount),
+  ]);
+
+  const csv = [header, ...rows]
+    .map((row) => row.map(escapeField).join(","))
+    .join("\r\n");
+
+  // Prepend a UTF-8 BOM so spreadsheet apps render accented characters correctly.
+  return Buffer.from("﻿" + csv, "utf8").toString("base64");
+}
+
+// Helper: Full, lossless export of all of a user's data as JSON, base64-encoded.
+// `version` is stamped so re-import can stay safe as the model evolves. Password and
+// googleId are deliberately omitted.
+export async function generateFullExportJson(
+  prisma: PrismaClient,
+  userId: string,
+): Promise<string> {
+  const [
+    profile,
+    categories,
+    subcategories,
+    expenses,
+    savingGoals,
+    investments,
+  ] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        email: true,
+        currency: true,
+        weeklyReminder: true,
+        provider: true,
+        name: true,
+        picture: true,
+        emailConfirmed: true,
+        createdAt: true,
+      },
+    }),
+    prisma.category.findMany({
+      where: { userId },
+      orderBy: { createdAt: "asc" },
+      select: { id: true, name: true, icon: true, createdAt: true },
+    }),
+    prisma.subcategory.findMany({
+      where: { category: { userId } },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        categoryId: true,
+        name: true,
+        icon: true,
+        budgetAmount: true,
+        rolloverDate: true,
+        createdAt: true,
+      },
+    }),
+    prisma.expense.findMany({
+      where: { userId },
+      orderBy: { date: "asc" },
+      select: {
+        id: true,
+        subcategoryId: true,
+        amount: true,
+        description: true,
+        date: true,
+        createdAt: true,
+      },
+    }),
+    prisma.savingGoal.findMany({
+      where: { userId },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        name: true,
+        goalAmount: true,
+        initialSaveAmount: true,
+        goalDate: true,
+        createdAt: true,
+      },
+    }),
+    prisma.investment.findMany({
+      where: { userId },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        name: true,
+        amount: true,
+        currency: true,
+        quantity: true,
+        startDate: true,
+        initialAmount: true,
+        createdAt: true,
+      },
+    }),
+  ]);
+
+  const payload = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    profile,
+    categories,
+    subcategories,
+    expenses,
+    savingGoals,
+    investments,
+  };
+
+  return Buffer.from(JSON.stringify(payload, null, 2), "utf8").toString(
+    "base64",
+  );
 }
