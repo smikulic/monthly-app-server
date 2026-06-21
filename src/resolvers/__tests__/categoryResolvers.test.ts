@@ -314,6 +314,42 @@ describe("categoryResolvers", () => {
         ),
       ).rejects.toThrow("Category not found or doesn't belong to user");
     });
+
+    it("stops a plain member from editing a shared category they didn't create", async () => {
+      const ctx = { ...context, groups: [{ groupId: "g1", role: "MEMBER" }] };
+      prismaMock.category.findUnique.mockResolvedValue({
+        userId: "creator",
+        groupId: "g1",
+      });
+
+      await expect(
+        categoryResolvers.Mutation.updateCategory(
+          null,
+          { id: "cat-shared", name: "X" },
+          ctx,
+          dummyInfo
+        )
+      ).rejects.toThrow("Category not found or doesn't belong to user");
+      expect(prismaMock.category.update).not.toHaveBeenCalled();
+    });
+
+    it("lets a group OWNER edit a shared category", async () => {
+      const ctx = { ...context, groups: [{ groupId: "g1", role: "OWNER" }] };
+      prismaMock.category.findUnique.mockResolvedValue({
+        userId: "creator",
+        groupId: "g1",
+      });
+      prismaMock.category.findFirst.mockResolvedValue(null);
+      prismaMock.category.update.mockResolvedValue({ id: "cat-shared" });
+
+      await categoryResolvers.Mutation.updateCategory(
+        null,
+        { id: "cat-shared", name: "Renamed" },
+        ctx,
+        dummyInfo
+      );
+      expect(prismaMock.category.update).toHaveBeenCalled();
+    });
   });
 
   describe("Mutation.deleteCategory", () => {

@@ -272,6 +272,30 @@ describe("subcategoryResolvers", () => {
       ).rejects.toThrowError("Category not found or doesn't belong to user");
       expect(prismaMock.subcategory.update).not.toHaveBeenCalled();
     });
+
+    it("stops a plain member from editing a subcategory they don't manage", async () => {
+      const ctx = { ...context, groups: [{ groupId: "g1", role: "MEMBER" }] };
+      prismaMock.subcategory.findUnique.mockResolvedValue({
+        id: "sub",
+        category: { userId: "creator", groupId: "g1" },
+      });
+
+      await expect(
+        subcategoryResolvers.Mutation.updateSubcategory(
+          null,
+          {
+            id: "sub",
+            name: "X",
+            budgetAmount: 1,
+            rolloverDate: "2022-09-01",
+            categoryId: "cat",
+          },
+          ctx,
+          dummyInfo
+        )
+      ).rejects.toThrowError("Subcategory not found or doesn't belong to user");
+      expect(prismaMock.subcategory.update).not.toHaveBeenCalled();
+    });
   });
 
   describe("Mutation.deleteSubcategory", () => {

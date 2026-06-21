@@ -1,7 +1,7 @@
 import { notFoundError } from "../utils/notFoundError.js";
 import { getFilterDateRange } from "../utils/getFilterDateRange.js";
 import { secured } from "../utils/secured.js";
-import { canAccessCategory } from "../utils/scope.js";
+import { canAccessCategory, canManage } from "../utils/scope.js";
 import {
   sanitizeString,
   validatePositiveInteger,
@@ -89,7 +89,11 @@ export const subcategoryResolvers = {
 
       if (
         !existingSubcategory ||
-        !canAccessCategory(existingSubcategory.category, context)
+        !canManage(
+          existingSubcategory.category.userId,
+          existingSubcategory.category,
+          context
+        )
       ) {
         throw new Error("Subcategory not found or doesn't belong to user");
       }
@@ -133,7 +137,11 @@ export const subcategoryResolvers = {
 
         if (
           !existingSubcategory ||
-          !canAccessCategory(existingSubcategory.category, context)
+          !canManage(
+          existingSubcategory.category.userId,
+          existingSubcategory.category,
+          context
+        )
         ) {
           notFoundError("Subcategory");
         }

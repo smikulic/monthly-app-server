@@ -1,7 +1,11 @@
 import { notFoundError } from "../utils/notFoundError.js";
 import { secured } from "../utils/secured.js";
 import { sanitizeString } from "../utils/validation.js";
-import { categoryScopeWhere, canAccessCategory } from "../utils/scope.js";
+import {
+  categoryScopeWhere,
+  canAccessCategory,
+  canManage,
+} from "../utils/scope.js";
 
 export const categoryResolvers = {
   Query: {
@@ -84,7 +88,10 @@ export const categoryResolvers = {
         select: { userId: true, groupId: true },
       });
 
-      if (!existingCategory || !canAccessCategory(existingCategory, context)) {
+      if (
+        !existingCategory ||
+        !canManage(existingCategory.userId, existingCategory, context)
+      ) {
         throw new Error("Category not found or doesn't belong to user");
       }
 
@@ -141,7 +148,7 @@ export const categoryResolvers = {
           select: { userId: true, groupId: true },
         });
 
-        if (!category || !canAccessCategory(category, context)) {
+        if (!category || !canManage(category.userId, category, context)) {
           throw notFoundError("Category");
         }
 

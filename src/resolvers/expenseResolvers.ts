@@ -2,7 +2,11 @@ import { notFoundError } from "../utils/notFoundError.js";
 import { getFilterDateRange } from "../utils/getFilterDateRange.js";
 import { secured } from "../utils/secured.js";
 import type { AuthContext } from "../utils/secured.js";
-import { categoryScopeWhere, canAccessCategory } from "../utils/scope.js";
+import {
+  categoryScopeWhere,
+  canAccessCategory,
+  canManage,
+} from "../utils/scope.js";
 import {
   sanitizeString,
   validatePositiveInteger,
@@ -182,6 +186,7 @@ export const expenseResolvers = {
       const existingExpense = await context.prisma.expense.findUnique({
         where: { id: args.id },
         select: {
+          userId: true,
           subcategory: {
             select: { category: { select: { userId: true, groupId: true } } },
           },
@@ -190,7 +195,11 @@ export const expenseResolvers = {
 
       if (
         !existingExpense ||
-        !canAccessCategory(existingExpense.subcategory.category, context)
+        !canManage(
+          existingExpense.userId,
+          existingExpense.subcategory.category,
+          context
+        )
       ) {
         throw new Error("Expense not found or doesn't belong to user");
       }
@@ -273,6 +282,7 @@ export const expenseResolvers = {
       const existingExpense = await context.prisma.expense.findUnique({
         where: { id: args.id },
         select: {
+          userId: true,
           subcategory: {
             select: { category: { select: { userId: true, groupId: true } } },
           },
@@ -281,7 +291,11 @@ export const expenseResolvers = {
 
       if (
         !existingExpense ||
-        !canAccessCategory(existingExpense.subcategory.category, context)
+        !canManage(
+          existingExpense.userId,
+          existingExpense.subcategory.category,
+          context
+        )
       ) {
         notFoundError("Expense");
       }

@@ -1,4 +1,4 @@
-import { Prisma } from "@prisma/client";
+import { Prisma, GroupRole } from "@prisma/client";
 import type { AuthContext } from "./secured.js";
 
 export type ScopeMode = "ALL" | "MINE" | "GROUP";
@@ -47,4 +47,31 @@ export function canAccessCategory(
     return context.groups.some((g) => g.groupId === category.groupId);
   }
   return category.userId === context.currentUser.id;
+}
+
+// Whether the caller may edit/remove an item owned by `ownerUserId` and living
+// in `category`: they created it, or they are a group OWNER/ADMIN (moderation).
+// Used for categories (owner = category.userId), subcategories (owner = parent
+// category.userId), and expenses (owner = the expense's payer/enterer userId).
+export function canManage(
+  ownerUserId: string,
+  category: { userId: string; groupId: string | null },
+  context: AuthContext,
+): boolean {
+  if (!canAccessCategory(category, context)) {
+    return false;
+  }
+  if (ownerUserId === context.currentUser.id) {
+    return true;
+  }
+  if (category.groupId) {
+    const membership = context.groups.find(
+      (g) => g.groupId === category.groupId,
+    );
+    return (
+      membership?.role === GroupRole.OWNER ||
+      membership?.role === GroupRole.ADMIN
+    );
+  }
+  return false;
 }

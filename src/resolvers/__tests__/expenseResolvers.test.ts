@@ -240,6 +240,7 @@ describe("expenseResolvers", () => {
     it("updates an expense whose category the caller can access", async () => {
       const fakeUpdated = { id: "exp2" };
       prismaMock.expense.findUnique.mockResolvedValue({
+        userId: dummyUser.id,
         subcategory: { category: ownedCategory },
       });
       prismaMock.subcategory.findUnique.mockResolvedValue({
@@ -267,6 +268,7 @@ describe("expenseResolvers", () => {
       expect(prismaMock.expense.findUnique).toHaveBeenCalledWith({
         where: { id: args.id },
         select: {
+          userId: true,
           subcategory: {
             select: { category: { select: { userId: true, groupId: true } } },
           },
@@ -301,6 +303,7 @@ describe("expenseResolvers", () => {
   describe("Mutation.deleteExpense", () => {
     it("deletes an expense the caller can access", async () => {
       prismaMock.expense.findUnique.mockResolvedValue({
+        userId: dummyUser.id,
         subcategory: { category: ownedCategory },
       });
       prismaMock.expense.delete.mockResolvedValue({ id: "exp3" });
@@ -328,6 +331,80 @@ describe("expenseResolvers", () => {
           context,
           dummyInfo,
         ),
+      ).rejects.toThrow("No such Expense found");
+      expect(prismaMock.expense.delete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("manage permissions (shared categories)", () => {
+    const sharedCategory = { userId: "creator", groupId: "g1" };
+
+    it("lets a group OWNER edit another member's expense", async () => {
+      const ctx = { ...context, groups: [{ groupId: "g1", role: "OWNER" }] };
+      prismaMock.expense.findUnique.mockResolvedValue({
+        userId: "another-member",
+        subcategory: { category: sharedCategory },
+      });
+      prismaMock.expense.update.mockResolvedValue({ id: "exp" });
+
+      await expenseResolvers.Mutation.updateExpense(
+        null,
+        { id: "exp", amount: 10 },
+        ctx,
+        dummyInfo
+      );
+      expect(prismaMock.expense.update).toHaveBeenCalled();
+    });
+
+    it("lets a member edit their own expense in a shared category", async () => {
+      const ctx = { ...context, groups: [{ groupId: "g1", role: "MEMBER" }] };
+      prismaMock.expense.findUnique.mockResolvedValue({
+        userId: dummyUser.id,
+        subcategory: { category: sharedCategory },
+      });
+      prismaMock.expense.update.mockResolvedValue({ id: "exp" });
+
+      await expenseResolvers.Mutation.updateExpense(
+        null,
+        { id: "exp", amount: 10 },
+        ctx,
+        dummyInfo
+      );
+      expect(prismaMock.expense.update).toHaveBeenCalled();
+    });
+
+    it("stops a plain member from editing another member's expense", async () => {
+      const ctx = { ...context, groups: [{ groupId: "g1", role: "MEMBER" }] };
+      prismaMock.expense.findUnique.mockResolvedValue({
+        userId: "another-member",
+        subcategory: { category: sharedCategory },
+      });
+
+      await expect(
+        expenseResolvers.Mutation.updateExpense(
+          null,
+          { id: "exp", amount: 10 },
+          ctx,
+          dummyInfo
+        )
+      ).rejects.toThrow("Expense not found or doesn't belong to user");
+      expect(prismaMock.expense.update).not.toHaveBeenCalled();
+    });
+
+    it("stops a plain member from deleting another member's expense", async () => {
+      const ctx = { ...context, groups: [{ groupId: "g1", role: "MEMBER" }] };
+      prismaMock.expense.findUnique.mockResolvedValue({
+        userId: "another-member",
+        subcategory: { category: sharedCategory },
+      });
+
+      await expect(
+        expenseResolvers.Mutation.deleteExpense(
+          null,
+          { id: "exp" },
+          ctx,
+          dummyInfo
+        )
       ).rejects.toThrow("No such Expense found");
       expect(prismaMock.expense.delete).not.toHaveBeenCalled();
     });
