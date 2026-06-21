@@ -1,5 +1,6 @@
 import { ApolloServer } from "@apollo/server";
 import { startStandaloneServer } from "@apollo/server/standalone";
+import depthLimit from "graphql-depth-limit";
 import cron from "node-cron";
 import * as Sentry from "@sentry/node";
 import { ProfilingIntegration } from "@sentry/profiling-node";
@@ -78,6 +79,10 @@ const server = new ApolloServer({
   // Disable CSRF prevention to fix frontend refresh issues
   // Alternative security: JWT tokens + proper CORS + input validation already implemented
   csrfPrevention: false,
+  // Hide the schema from the public in production (set NODE_ENV=production on the server)
+  introspection: process.env.NODE_ENV !== "production",
+  // Cap query nesting depth to prevent DoS via deeply nested / cyclic queries
+  validationRules: [depthLimit(10)],
   // context: ({ req }) => contextFactory(req),
 });
 
