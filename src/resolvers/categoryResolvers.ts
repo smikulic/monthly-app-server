@@ -1,12 +1,13 @@
 import { notFoundError } from "../utils/notFoundError.js";
 import { secured } from "../utils/secured.js";
 import { sanitizeString } from "../utils/validation.js";
+import { categoryScopeWhere, canAccessCategory } from "../utils/scope.js";
 
 export const categoryResolvers = {
   Query: {
     categories: secured((parent, args, context) => {
-      const categoriesResponse = context.prisma.category.findMany({
-        where: { userId: context.currentUser.id },
+      return context.prisma.category.findMany({
+        where: categoryScopeWhere(args, context),
         include: {
           user: true,
         },
@@ -14,17 +15,13 @@ export const categoryResolvers = {
           createdAt: "asc", // or 'desc' for descending order
         },
       });
-      return categoriesResponse;
     }),
     category: secured(async (parent, args, context) => {
-      const categoryResponse = await context.prisma.category.findFirst({
-        where: {
-          id: args.id,
-          userId: context.currentUser.id, // Ensure user can only access their own categories
-        },
+      const categoryResponse = await context.prisma.category.findUnique({
+        where: { id: args.id },
       });
 
-      if (!categoryResponse) {
+      if (!categoryResponse || !canAccessCategory(categoryResponse, context)) {
         throw new Error("Category not found or doesn't belong to user");
       }
 
@@ -40,7 +37,7 @@ export const categoryResolvers = {
         args.name.trim().length === 0
       ) {
         throw new Error(
-          "Category name is required and must be a non-empty string"
+          "Category name is required and must be a non-empty string",
         );
       }
 
@@ -48,14 +45,25 @@ export const categoryResolvers = {
         throw new Error("Category name is too long (max 100 characters)");
       }
 
-      // Check for duplicate category names for this user
-      const existingCategory = await context.prisma.category.findFirst({
-        where: {
-          name: args.name.trim(),
-          userId: context.currentUser.id,
-        },
-      });
+      // If creating directly in a group, the caller must be a member.
+      if (args.groupId) {
+        const isMember = context.groups.some((g) => g.groupId === args.groupId);
+        if (!isMember) {
+          throw new Error("You are not a member of this group");
+        }
+      }
 
+      // Duplicate-name check within the same scope (a group, or my personal set).
+      const duplicateWhere = args.groupId
+        ? { name: args.name.trim(), groupId: args.groupId }
+        : {
+            name: args.name.trim(),
+            userId: context.currentUser.id,
+            groupId: null,
+          };
+      const existingCategory = await context.prisma.category.findFirst({
+        where: duplicateWhere,
+      });
       if (existingCategory) {
         throw new Error("A category with this name already exists");
       }
@@ -65,20 +73,18 @@ export const categoryResolvers = {
           name: sanitizeString(args.name, 100),
           icon: args.icon ? sanitizeString(args.icon, 50) : "",
           user: { connect: { id: context.currentUser.id } },
+          ...(args.groupId ? { group: { connect: { id: args.groupId } } } : {}),
         },
       });
     }),
     updateCategory: secured(async (parent, args, context) => {
-      // Verify category belongs to user
+      // Verify the caller can access the category (owner, or group member).
       const existingCategory = await context.prisma.category.findUnique({
         where: { id: args.id },
-        select: { userId: true, name: true },
+        select: { userId: true, groupId: true },
       });
 
-      if (
-        !existingCategory ||
-        existingCategory.userId !== context.currentUser.id
-      ) {
+      if (!existingCategory || !canAccessCategory(existingCategory, context)) {
         throw new Error("Category not found or doesn't belong to user");
       }
 
@@ -96,13 +102,21 @@ export const categoryResolvers = {
           throw new Error("Category name is too long (max 100 characters)");
         }
 
-        // Check for duplicate category names (excluding current category)
+        // Check for duplicate names within the same scope (excluding this one).
+        const duplicateWhere = existingCategory.groupId
+          ? {
+              name: args.name.trim(),
+              groupId: existingCategory.groupId,
+              NOT: { id: args.id },
+            }
+          : {
+              name: args.name.trim(),
+              userId: context.currentUser.id,
+              groupId: null,
+              NOT: { id: args.id },
+            };
         const duplicateCategory = await context.prisma.category.findFirst({
-          where: {
-            name: args.name.trim(),
-            userId: context.currentUser.id,
-            NOT: { id: args.id },
-          },
+          where: duplicateWhere,
         });
 
         if (duplicateCategory) {
@@ -122,31 +136,57 @@ export const categoryResolvers = {
     }),
     deleteCategory: secured(
       async (_parent, args: { id: string }, context, _info) => {
-        const deletedCount = await context.prisma.category.deleteMany({
-          where: {
-            id: args.id,
-            userId: context.currentUser.id,
-          },
+        const category = await context.prisma.category.findUnique({
+          where: { id: args.id },
+          select: { userId: true, groupId: true },
         });
 
-        if (deletedCount.count === 0) {
+        if (!category || !canAccessCategory(category, context)) {
           throw notFoundError("Category");
         }
 
+        await context.prisma.category.delete({ where: { id: args.id } });
+
         return { name: args.id };
-      }
+      },
     ),
+    shareCategory: secured(async (_parent, args, context) => {
+      // Only the creator can share their own category.
+      const category = await context.prisma.category.findUnique({
+        where: { id: args.categoryId },
+        select: { userId: true },
+      });
+      if (!category || category.userId !== context.currentUser.id) {
+        throw new Error("Category not found or doesn't belong to user");
+      }
+
+      const isMember = context.groups.some((g) => g.groupId === args.groupId);
+      if (!isMember) {
+        throw new Error("You are not a member of this group");
+      }
+
+      return context.prisma.category.update({
+        where: { id: args.categoryId },
+        data: { group: { connect: { id: args.groupId } } },
+      });
+    }),
+    unshareCategory: secured(async (_parent, args, context) => {
+      // Only the creator can return a category to personal.
+      const category = await context.prisma.category.findUnique({
+        where: { id: args.categoryId },
+        select: { userId: true },
+      });
+      if (!category || category.userId !== context.currentUser.id) {
+        throw new Error("Category not found or doesn't belong to user");
+      }
+
+      return context.prisma.category.update({
+        where: { id: args.categoryId },
+        data: { group: { disconnect: true } },
+      });
+    }),
   },
   Category: {
-    // subcategories: secured((parent, args, context) => {
-    //   const subcategoriesResponse = context.prisma.subcategory.findMany({
-    //     where: { categoryId: parent.id },
-    //     orderBy: {
-    //       createdAt: "asc", // or 'desc' for descending order
-    //     },
-    //   });
-    //   return subcategoriesResponse;
-    // }),
     subcategories: secured((parent, args, context) => {
       // use DataLoader instead of separate Prisma call per category
       return context.loaders.subcategory.load(parent.id);

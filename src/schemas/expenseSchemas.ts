@@ -19,8 +19,16 @@ export const expenseTypeDefs = `
   }
 
   extend type Query {
-    expenses(filter: ExpenseFilterInput): [Expense!]!
-    chartExpenses(filter: ExpenseFilterInput): ChartExpensesPayload!
+    expenses(
+      filter: ExpenseFilterInput
+      scope: ScopeMode
+      groupId: ID
+    ): [Expense!]!
+    chartExpenses(
+      filter: ExpenseFilterInput
+      scope: ScopeMode
+      groupId: ID
+    ): ChartExpensesPayload!
   }
 
   extend type Mutation {

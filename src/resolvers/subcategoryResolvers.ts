@@ -1,6 +1,7 @@
 import { notFoundError } from "../utils/notFoundError.js";
 import { getFilterDateRange } from "../utils/getFilterDateRange.js";
 import { secured } from "../utils/secured.js";
+import { canAccessCategory } from "../utils/scope.js";
 import {
   sanitizeString,
   validatePositiveInteger,
@@ -10,15 +11,16 @@ import {
 export const subcategoryResolvers = {
   Query: {
     subcategory: secured(async (parent, args, context) => {
-      // Scope by the parent category's owner so users only read their own
-      const subcategoryResponse = await context.prisma.subcategory.findFirst({
-        where: {
-          id: args.id,
-          category: { userId: context.currentUser.id },
-        },
+      // Access follows the parent category (personal owner, or group member).
+      const subcategoryResponse = await context.prisma.subcategory.findUnique({
+        where: { id: args.id },
+        include: { category: { select: { userId: true, groupId: true } } },
       });
 
-      if (!subcategoryResponse) {
+      if (
+        !subcategoryResponse ||
+        !canAccessCategory(subcategoryResponse.category, context)
+      ) {
         notFoundError("Subcategory");
       }
 
@@ -38,29 +40,30 @@ export const subcategoryResolvers = {
 
       const budgetValidation = validatePositiveInteger(
         args.budgetAmount,
-        "budgetAmount"
+        "budgetAmount",
       );
       if (!budgetValidation.isValid) {
         throw new Error(
           `Budget amount validation failed: ${budgetValidation.errors.join(
-            ", "
-          )}`
+            ", ",
+          )}`,
         );
       }
 
       const dateValidation = validateDate(args.rolloverDate, "rolloverDate");
       if (!dateValidation.isValid) {
         throw new Error(
-          `Rollover date validation failed: ${dateValidation.errors.join(", ")}`
+          `Rollover date validation failed: ${dateValidation.errors.join(", ")}`,
         );
       }
 
-      // Verify category belongs to user
-      const category = await context.prisma.category.findFirst({
-        where: { id: args.categoryId, userId: context.currentUser.id },
+      // Verify the caller can access the parent category
+      const category = await context.prisma.category.findUnique({
+        where: { id: args.categoryId },
+        select: { userId: true, groupId: true },
       });
 
-      if (!category) {
+      if (!category || !canAccessCategory(category, context)) {
         throw new Error("Category not found or doesn't belong to user");
       }
 
@@ -78,26 +81,27 @@ export const subcategoryResolvers = {
       });
     }),
     updateSubcategory: secured(async (parent, args, context) => {
-      // Verify the subcategory belongs to the user (via its parent category)
-      const existingSubcategory = await context.prisma.subcategory.findFirst({
-        where: {
-          id: args.id,
-          category: { userId: context.currentUser.id },
-        },
-        select: { id: true },
+      // Verify access via the subcategory's current parent category
+      const existingSubcategory = await context.prisma.subcategory.findUnique({
+        where: { id: args.id },
+        include: { category: { select: { userId: true, groupId: true } } },
       });
 
-      if (!existingSubcategory) {
+      if (
+        !existingSubcategory ||
+        !canAccessCategory(existingSubcategory.category, context)
+      ) {
         throw new Error("Subcategory not found or doesn't belong to user");
       }
 
-      // If reassigning to a category, verify that category also belongs to user
+      // If reassigning to a category, verify access to the new category too
       if (args.categoryId) {
-        const category = await context.prisma.category.findFirst({
-          where: { id: args.categoryId, userId: context.currentUser.id },
+        const category = await context.prisma.category.findUnique({
+          where: { id: args.categoryId },
+          select: { userId: true, groupId: true },
         });
 
-        if (!category) {
+        if (!category || !canAccessCategory(category, context)) {
           throw new Error("Category not found or doesn't belong to user");
         }
       }
@@ -119,16 +123,18 @@ export const subcategoryResolvers = {
     }),
     deleteSubcategory: secured(
       async (_parent, args: { id: string }, context, _info) => {
-        // Verify ownership (via parent category) before deleting
-        const existingSubcategory = await context.prisma.subcategory.findFirst({
-          where: {
-            id: args.id,
-            category: { userId: context.currentUser.id },
+        // Verify access via the parent category before deleting
+        const existingSubcategory = await context.prisma.subcategory.findUnique(
+          {
+            where: { id: args.id },
+            include: { category: { select: { userId: true, groupId: true } } },
           },
-          select: { id: true },
-        });
+        );
 
-        if (!existingSubcategory) {
+        if (
+          !existingSubcategory ||
+          !canAccessCategory(existingSubcategory.category, context)
+        ) {
           notFoundError("Subcategory");
         }
 
@@ -137,7 +143,7 @@ export const subcategoryResolvers = {
             id: args.id,
           },
         });
-      }
+      },
     ),
   },
   Subcategory: {

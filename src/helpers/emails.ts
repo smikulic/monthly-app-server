@@ -8,7 +8,7 @@ const postmarkClient = new postmark.ServerClient(POSTMARK_API_KEY);
 // Helper: Send confirmation email
 export async function sendConfirmationEmail(
   user: PrismaUser,
-  token: string
+  token: string,
 ): Promise<void> {
   await postmarkClient.sendEmailWithTemplate({
     From: "support@yourmonthly.app",
@@ -26,7 +26,7 @@ export async function sendConfirmationEmail(
 // Helper: Send password reset email
 export async function sendPasswordResetEmail(
   user: PrismaUser,
-  token: string
+  token: string,
 ): Promise<void> {
   await postmarkClient.sendEmailWithTemplate({
     From: "support@yourmonthly.app",
@@ -41,6 +41,28 @@ export async function sendPasswordResetEmail(
   });
 }
 
+// Helper: Send a group invitation email
+export async function sendGroupInviteEmail(
+  email: string,
+  token: string,
+  groupName: string,
+  invitedByName: string,
+): Promise<void> {
+  await postmarkClient.sendEmailWithTemplate({
+    From: "support@yourmonthly.app",
+    To: email,
+    TemplateAlias: "group-invite",
+    TemplateModel: {
+      product_name: "Monthly App",
+      group_name: groupName,
+      invited_by: invitedByName,
+      action_url: `https://app.yourmonthly.app/accept-invite?token=${token}`,
+      support_url: "support@yourmonthly.app",
+    },
+    MessageStream: "outbound",
+  });
+}
+
 export async function sendWeeklyReminderEmail(
   user: PrismaUser,
   model: {
@@ -48,7 +70,7 @@ export async function sendWeeklyReminderEmail(
     total_spent: string;
     budget_left: string;
     total_budget_week: string;
-  }
+  },
 ): Promise<void> {
   if (!user.email) return;
 
