@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  // Production build: compile app source only, skip tests (and their dev-only types).
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/**/__tests__/**",
+    "src/**/*.test.ts"
+  ]
+}
