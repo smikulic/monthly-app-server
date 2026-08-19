@@ -1,5 +1,5 @@
 import { GraphQLResolveInfo } from "graphql";
-import { PrismaClient, GroupRole } from "@prisma/client";
+import type { PrismaClient, GroupRole } from "../generated/prisma/client.js";
 import { withErrorHandle } from "../utils/withErrorHandle.js";
 import { withAuth } from "../utils/withAuth.js";
 

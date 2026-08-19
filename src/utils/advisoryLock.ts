@@ -1,4 +1,4 @@
-import type { PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "../generated/prisma/client.js";
 
 const LOCK_KEY_1 = 20250905; // 32-bit int
 const LOCK_KEY_2 = 1; // 32-bit int

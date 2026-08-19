@@ -1,5 +1,5 @@
 import DataLoader from "dataloader";
-import { PrismaClient, Subcategory } from "@prisma/client";
+import type { PrismaClient, Subcategory } from "../generated/prisma/client.js";
 
 export function createSubcategoryLoader(prisma: PrismaClient) {
   return new DataLoader<string, Subcategory[]>(async (categoryIds) => {

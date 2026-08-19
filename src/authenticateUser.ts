@@ -1,5 +1,5 @@
 import jwt from "jsonwebtoken";
-import { PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "./generated/prisma/client.js";
 import { IncomingMessage } from "http";
 import "dotenv/config";
 
@@ -19,7 +19,7 @@ export interface JwtPayload {
 
 export async function authenticateUser(
   prisma: PrismaClient,
-  req: IncomingMessage & { headers: Record<string, string | undefined> }
+  req: IncomingMessage & { headers: Record<string, string | undefined> },
 ) {
   const authHeader = req.headers.authorization;
 

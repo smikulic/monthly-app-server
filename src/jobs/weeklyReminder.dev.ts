@@ -1,12 +1,13 @@
 import "dotenv/config";
 import cron, { ScheduledTask } from "node-cron";
-import { PrismaClient, User } from "@prisma/client";
+import type { User } from "../generated/prisma/client.js";
 import { startOfWeek, endOfWeek } from "date-fns";
 import { toZonedTime, fromZonedTime, formatInTimeZone } from "date-fns-tz";
 // @ts-ignore
 import { sendWeeklyReminderEmail } from "../helpers/emails.js";
+import { prisma } from "../prismaClient.js";
 
-const prisma = new PrismaClient();
+export { prisma };
 
 const DEFAULT_TZ = process.env.DEFAULT_TZ || "Europe/Zagreb";
 const DRY_RUN = (process.env.DRY_RUN ?? "true").toLowerCase() !== "false"; // default true
@@ -86,7 +87,7 @@ async function processUser(user: User) {
   const weekRange = `${formatInTimeZone(
     weekStartLocal,
     DEFAULT_TZ,
-    "d LLL"
+    "d LLL",
   )} – ${formatInTimeZone(endForLabel, DEFAULT_TZ, "d LLL, yyyy")}`;
 
   const model = {
@@ -157,12 +158,12 @@ function startDevCron(scope: "one" | "all"): ScheduledTask {
         }
       }
     },
-    { timezone: DEFAULT_TZ }
+    { timezone: DEFAULT_TZ },
   );
 
   const shutdown = async (signal: string) => {
     console.log(
-      `\n${signal} received. Stopping cron and disconnecting Prisma...`
+      `\n${signal} received. Stopping cron and disconnecting Prisma...`,
     );
     task.stop();
     await prisma.$disconnect();
@@ -173,7 +174,7 @@ function startDevCron(scope: "one" | "all"): ScheduledTask {
   process.on("SIGTERM", () => void shutdown("SIGTERM"));
 
   console.log(
-    `Cron started (${INTERVAL_CRON}) in ${DEFAULT_TZ}. Press Ctrl+C to stop.`
+    `Cron started (${INTERVAL_CRON}) in ${DEFAULT_TZ}. Press Ctrl+C to stop.`,
   );
   return task;
 }

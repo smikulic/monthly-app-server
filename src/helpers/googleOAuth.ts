@@ -1,10 +1,10 @@
 import { OAuth2Client } from "google-auth-library";
-import { PrismaClient } from "@prisma/client";
+import type { PrismaClient } from "../generated/prisma/client.js";
 
 const client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID,
   process.env.GOOGLE_CLIENT_SECRET,
-  process.env.GOOGLE_REDIRECT_URI
+  process.env.GOOGLE_REDIRECT_URI,
 );
 
 export interface GoogleUserInfo {
@@ -57,7 +57,7 @@ export async function getGoogleUserInfo(code: string): Promise<GoogleUserInfo> {
 
 export async function findOrCreateGoogleUser(
   prisma: PrismaClient,
-  googleUser: GoogleUserInfo
+  googleUser: GoogleUserInfo,
 ) {
   // Check if user exists with this Google ID
   let user = await prisma.user.findUnique({

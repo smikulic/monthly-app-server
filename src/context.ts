@@ -1,9 +1,11 @@
-import { PrismaClient } from "@prisma/client";
+// src/context.ts
+import "dotenv/config";
 import { IncomingMessage } from "http";
 import { authenticateUser } from "./authenticateUser.js";
 import { createSubcategoryLoader } from "./loaders/subcategoryLoader.js";
+import { prisma } from "./prismaClient.js";
 
-export const prisma = new PrismaClient();
+export { prisma };
 
 export async function contextFactory(
   req: IncomingMessage & { headers: Record<string, string | undefined> },
