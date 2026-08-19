@@ -2,8 +2,6 @@ import { ApolloServer } from "@apollo/server";
 import { startStandaloneServer } from "@apollo/server/standalone";
 import depthLimit from "graphql-depth-limit";
 import cron from "node-cron";
-import * as Sentry from "@sentry/node";
-import { ProfilingIntegration } from "@sentry/profiling-node";
 import lodash from "lodash";
 const { merge } = lodash;
 import { userTypeDefs } from "./schemas/userSchemas.js";
@@ -27,15 +25,6 @@ import { prisma } from "./context.js";
 import { tryLock, unlock } from "./utils/advisoryLock.js";
 import { sendAllWeeklyReminders } from "./jobs/weeklyReminder.core.js";
 import { contextFactory } from "./context.js";
-
-Sentry.init({
-  dsn: process.env.SENTRY_DSN,
-  integrations: [new ProfilingIntegration()],
-  // Performance Monitoring
-  tracesSampleRate: 0.5, // Capture 100% of the transactions, reduce in production!
-  // Set sampling rate for profiling - this is relative to tracesSampleRate
-  profilesSampleRate: 0.5, // Capture 100% of the transactions, reduce in production!
-});
 
 const port = process.env.PORT ? Number(process.env.PORT) : 3001;
 
