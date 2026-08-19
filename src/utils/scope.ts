@@ -1,4 +1,5 @@
-import { Prisma, GroupRole } from "@prisma/client";
+import type { Prisma } from "../generated/prisma/client.js";
+import { GroupRole } from "../generated/prisma/enums.js";
 import type { AuthContext } from "./secured.js";
 
 export type ScopeMode = "ALL" | "MINE" | "GROUP";

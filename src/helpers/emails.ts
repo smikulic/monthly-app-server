@@ -1,5 +1,5 @@
 import postmark from "postmark";
-import { User as PrismaUser } from "@prisma/client";
+import type { User as PrismaUser } from "../generated/prisma/client.js";
 import { POSTMARK_API_KEY } from "../config/constants.js";
 
 // Postmark client for sending emails

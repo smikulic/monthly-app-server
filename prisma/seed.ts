@@ -1,9 +1,9 @@
 // prisma/seed.ts
 
-import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { prisma } from "../src/prismaClient.js";
 
-const prisma = new PrismaClient();
+export { prisma };
 
 const rolloverDate = "2025-01-05";
 const [y, m, d] = rolloverDate.split("-").map(Number);
@@ -203,7 +203,7 @@ async function main() {
     dateStr: string,
     amount: number,
     description: string,
-    subcategoryId: string
+    subcategoryId: string,
   ) {
     const [y, m, d] = dateStr.split("-").map(Number);
     const dateForStorage = new Date(Date.UTC(y, m - 1, d));
@@ -227,7 +227,7 @@ async function main() {
     const date = new Date(
       currentDate.getFullYear(),
       currentDate.getMonth() - i,
-      1
+      1,
     );
     months.push(date);
   }
@@ -294,7 +294,7 @@ async function main() {
         dateStr,
         template.amounts[amountIndex],
         `${template.base} ${suffixes[suffixIndex]}`,
-        template.subcategory
+        template.subcategory,
       );
     }
   }
@@ -362,7 +362,7 @@ async function main() {
   }
 
   console.log(
-    "Seed completed: demo users + 6 months of expenses + investments + sample data created."
+    "Seed completed: demo users + 6 months of expenses + investments + sample data created.",
   );
 }
 

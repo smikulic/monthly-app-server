@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { GroupRole, InviteStatus } from "@prisma/client";
+import { GroupRole, InviteStatus } from "../generated/prisma/enums.js";
 import { secured } from "../utils/secured.js";
 import type { AuthContext } from "../utils/secured.js";
 import { sendGroupInviteEmail } from "../helpers/emails.js";

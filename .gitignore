@@ -11,6 +11,7 @@
 /client/build
 
 /dist
+/src/generated/prisma
 
 ## Claude
 CLAUDE.md

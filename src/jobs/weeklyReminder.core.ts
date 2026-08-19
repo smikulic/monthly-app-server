@@ -1,4 +1,4 @@
-import type { PrismaClient, User } from "@prisma/client";
+import type { PrismaClient, User } from "../generated/prisma/client.js";
 import { startOfWeek, endOfWeek } from "date-fns";
 import { toZonedTime, fromZonedTime, formatInTimeZone } from "date-fns-tz";
 import { sendWeeklyReminderEmail } from "../helpers/emails.js";

@@ -20,6 +20,15 @@ jobs:
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
+      # Prisma 7 generates the client into src/generated/prisma (gitignored), so it
+      # must be generated here before anything type-checks. `generate` never connects
+      # to the database, but prisma.config.ts resolves env("DATABASE_URL") at load
+      # time, so a placeholder value is required. Not a secret.
+      - name: Generate Prisma Client
+        run: npx prisma generate
+        env:
+          DATABASE_URL: postgres://ci:ci@localhost:5432/ci
+
       - name: Run tests
         run: yarn test
 

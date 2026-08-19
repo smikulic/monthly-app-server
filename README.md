@@ -54,6 +54,22 @@ To seed `demo` user you can run `npx prisma db seed`
 
 ## Local development
 
+### First-time setup (or after a fresh clone)
+
+The Prisma client is generated into `src/generated/prisma`, which is **gitignored**, so it
+does not come with the clone. Nothing type-checks until you generate it:
+
+```bash
+yarn install
+npx prisma generate     # required: creates src/generated/prisma
+```
+
+`npx prisma generate` reads `prisma.config.ts`, which resolves `env("DATABASE_URL")` at load
+time, so `.env` must exist first (it does not connect to the database). Re-run it after any
+change to `prisma/schema.prisma`.
+
+### Running
+
 To run the server we need to run:
   - `yarn dev` which starts the server on `http://localhost:3001`
   - we connect to remote development DB hosted on Digital Ocean (env files hooked up to Prisma client)

@@ -1,6 +1,5 @@
 // src/resolvers/__tests__/groupResolvers.test.ts
-
-import { GroupRole, InviteStatus } from "@prisma/client";
+import { GroupRole, InviteStatus } from "../../generated/prisma/enums.js";
 
 // Mock the email helper so importing groupResolvers doesn't construct the
 // Postmark client (which needs a token and isn't relevant to these tests).
