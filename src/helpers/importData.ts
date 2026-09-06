@@ -1,4 +1,5 @@
 import type { PrismaClient } from "../generated/prisma/client.js";
+import { toMonthStartUTC } from "../utils/budgetPeriods.js";
 import {
   sanitizeString,
   validatePositiveInteger,
@@ -268,6 +269,22 @@ export async function importUserData(
             rolloverDate: s.rolloverDate,
             categoryId: s.categoryId,
           },
+        });
+
+        // The export format carries a single amount, so an imported subcategory
+        // gets the one period that describes it. Without this it would arrive
+        // with an empty schedule, which reads as no budget in any month.
+        const validFrom = toMonthStartUTC(s.rolloverDate);
+        await tx.subcategoryBudget.upsert({
+          where: {
+            subcategoryId_validFrom: { subcategoryId: s.id, validFrom },
+          },
+          create: {
+            subcategoryId: s.id,
+            amount: s.budgetAmount,
+            validFrom,
+          },
+          update: { amount: s.budgetAmount },
         });
       }
 

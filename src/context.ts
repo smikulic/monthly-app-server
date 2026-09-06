@@ -2,6 +2,7 @@
 import "dotenv/config";
 import { IncomingMessage } from "http";
 import { authenticateUser } from "./authenticateUser.js";
+import { createSubcategoryBudgetLoader } from "./loaders/subcategoryBudgetLoader.js";
 import { createSubcategoryLoader } from "./loaders/subcategoryLoader.js";
 import { prisma } from "./prismaClient.js";
 
@@ -26,6 +27,7 @@ export async function contextFactory(
     groups,
     loaders: {
       subcategory: createSubcategoryLoader(prisma),
+      subcategoryBudget: createSubcategoryBudgetLoader(prisma),
     },
   };
 }

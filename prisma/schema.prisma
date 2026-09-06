@@ -57,12 +57,36 @@ model Subcategory {
   rolloverDate DateTime  @default(now())
   name         String
   icon         String
+  /// The newest period's amount, denormalised. Read it for "what is the budget
+  /// right now"; anything that spans months has to walk `budgets` instead.
   budgetAmount Int
   categoryId   String
   expenses     Expense[]
+  budgets      SubcategoryBudget[]
   category     Category  @relation(fields: [categoryId], references: [id])
 
   @@index([categoryId], name: "idx_subcategories_categoryid")
+}
+
+/// One amount, effective from `validFrom` until the next period starts.
+///
+/// A budget that changes (groceries going from 100 to 700 when a second person
+/// joins the household) used to have nowhere to go: `budgetAmount` was a single
+/// column, so editing it re-costed every month back to `rolloverDate`, and
+/// starting a fresh subcategory instead detached the expense history. A period
+/// per amount keeps both the old months and the new ones true.
+model SubcategoryBudget {
+  id            String      @id @default(uuid())
+  createdAt     DateTime    @default(now())
+  amount        Int
+  /// Always the first of the month: budgets are monthly, so a mid-month start
+  /// would only make the accrual ambiguous.
+  validFrom     DateTime
+  subcategoryId String
+  subcategory   Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+
+  @@unique([subcategoryId, validFrom])
+  @@index([subcategoryId, validFrom], name: "idx_subcategorybudgets_subcategoryid_validfrom")
 }
 
 model Expense {
