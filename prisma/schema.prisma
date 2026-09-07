@@ -54,11 +54,14 @@ model Subcategory {
   id           String    @id @default(uuid())
   createdAt    DateTime  @default(now())
   updatedAt    DateTime? @updatedAt
+  /// The month the schedule opens, mirroring the earliest period. Kept in step
+  /// by the resolvers rather than written directly.
   rolloverDate DateTime  @default(now())
   name         String
   icon         String
-  /// The newest period's amount, denormalised. Read it for "what is the budget
-  /// right now"; anything that spans months has to walk `budgets` instead.
+  /// Cache of the amount in force today, for the callers that only ever ask
+  /// about now (reports, insights, the weekly reminder). Anything spanning
+  /// months walks `budgets`, which is the truth.
   budgetAmount Int
   categoryId   String
   expenses     Expense[]

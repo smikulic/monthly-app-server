@@ -4,6 +4,7 @@ import { IncomingMessage } from "http";
 import { authenticateUser } from "./authenticateUser.js";
 import { createSubcategoryBudgetLoader } from "./loaders/subcategoryBudgetLoader.js";
 import { createSubcategoryLoader } from "./loaders/subcategoryLoader.js";
+import { createSubcategorySpendLoader } from "./loaders/subcategorySpendLoader.js";
 import { prisma } from "./prismaClient.js";
 
 export { prisma };
@@ -28,6 +29,7 @@ export async function contextFactory(
     loaders: {
       subcategory: createSubcategoryLoader(prisma),
       subcategoryBudget: createSubcategoryBudgetLoader(prisma),
+      subcategorySpend: createSubcategorySpendLoader(prisma),
     },
   };
 }

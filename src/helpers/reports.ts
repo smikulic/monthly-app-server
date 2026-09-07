@@ -236,6 +236,12 @@ export async function generateFullExportJson(
         budgetAmount: true,
         rolloverDate: true,
         createdAt: true,
+        // The whole schedule, so a budget that changed exports as the amounts
+        // that actually applied rather than today's figure backdated.
+        budgets: {
+          orderBy: { validFrom: "asc" },
+          select: { amount: true, validFrom: true },
+        },
       },
     }),
     prisma.expense.findMany({
@@ -279,11 +285,18 @@ export async function generateFullExportJson(
   ]);
 
   const payload = {
-    version: 1,
+    // v2 adds `budgets` per subcategory. `budgetAmount` and `rolloverDate` stay
+    // so a v2 file is still readable by anything expecting v1's shape.
+    version: 2,
     exportedAt: new Date().toISOString(),
     profile,
     categories,
-    subcategories,
+    // Flattened back to the v1 shape: the schedule's opening month is what the
+    // format has always called `rolloverDate`.
+    subcategories: subcategories.map(({ budgets, ...subcategory }) => ({
+      ...subcategory,
+      rolloverDate: budgets[0]?.validFrom ?? subcategory.createdAt,
+    })),
     expenses,
     savingGoals,
     investments,

@@ -44,10 +44,38 @@ describe("parseImportPayload", () => {
   });
 
   it("rejects an unsupported export version", () => {
-    const bad = { ...validPayload(), version: 2 };
+    const bad = { ...validPayload(), version: 99 };
     expect(() => parseImportPayload(JSON.stringify(bad))).toThrowError(
       /unsupported export version/,
     );
+  });
+
+  it("gives a v1 subcategory the single period it implies", () => {
+    // v1 knew one amount, so the most it can say is that it ran from the start.
+    const result = parseImportPayload(JSON.stringify(validPayload()));
+
+    expect(result.subcategories[0].budgets).toEqual([
+      { amount: 100, validFrom: new Date(Date.UTC(2026, 0, 1)) },
+    ]);
+  });
+
+  it("keeps a v2 schedule intact, normalised to month starts", () => {
+    const payload = { ...validPayload(), version: 2 };
+    payload.subcategories[0] = {
+      ...payload.subcategories[0],
+      budgetAmount: 700,
+      budgets: [
+        { amount: 100, validFrom: "2023-06-14T00:00:00.000Z" },
+        { amount: 700, validFrom: "2026-01-01T00:00:00.000Z" },
+      ],
+    } as any;
+
+    const result = parseImportPayload(JSON.stringify(payload));
+
+    expect(result.subcategories[0].budgets).toEqual([
+      { amount: 100, validFrom: new Date(Date.UTC(2023, 5, 1)) },
+      { amount: 700, validFrom: new Date(Date.UTC(2026, 0, 1)) },
+    ]);
   });
 
   it("rejects when a top-level collection is not a list", () => {
