@@ -1,4 +1,5 @@
 import type { PrismaClient } from "../generated/prisma/client.js";
+import { toMonthStartUTC } from "../utils/budgetPeriods.js";
 import {
   sanitizeString,
   validatePositiveInteger,
@@ -6,7 +7,10 @@ import {
 
 export type ImportMode = "MERGE" | "REPLACE";
 
-const EXPORT_VERSION = 1;
+// v2 carries each subcategory's full budget schedule. v1 files only knew a
+// single amount, so they import as one period and keep working.
+const EXPORT_VERSION = 2;
+const SUPPORTED_IMPORT_VERSIONS = [1, 2];
 
 export type ImportResult = {
   categories: number;
@@ -55,8 +59,10 @@ export function parseImportPayload(payload: string) {
     return fail("file is not valid JSON");
   }
 
-  if (data?.version !== EXPORT_VERSION) {
-    fail(`unsupported export version (expected ${EXPORT_VERSION})`);
+  if (!SUPPORTED_IMPORT_VERSIONS.includes(data?.version)) {
+    fail(
+      `unsupported export version (expected ${SUPPORTED_IMPORT_VERSIONS.join(" or ")})`,
+    );
   }
 
   const categories = asArray(data.categories, "categories").map((c) => ({
@@ -69,17 +75,42 @@ export function parseImportPayload(payload: string) {
   }));
 
   const subcategories = asArray(data.subcategories, "subcategories").map(
-    (s) => ({
-      id: reqId(s.id, "subcategory"),
-      categoryId: reqId(s.categoryId, "subcategory.categoryId"),
-      name: reqName(s.name, "subcategory"),
-      icon: typeof s.icon === "string" ? sanitizeString(s.icon, 50) : "",
-      budgetAmount: reqInt(s.budgetAmount, "budgetAmount"),
-      rolloverDate: reqDate(s.rolloverDate, "rolloverDate"),
-      createdAt: s.createdAt
-        ? reqDate(s.createdAt, "subcategory.createdAt")
-        : undefined,
-    }),
+    (s) => {
+      const rolloverDate = reqDate(s.rolloverDate, "rolloverDate");
+      const budgetAmount = reqInt(s.budgetAmount, "budgetAmount");
+
+      /*
+       * A v1 file records only what the budget is now, so the best it can say is
+       * that one amount ran from the start. v2 carries the real schedule, which
+       * is the difference between importing "700 since 2023" and importing "100
+       * until 2026, then 700".
+       */
+      const budgets = (
+        s.budgets === undefined
+          ? [{ amount: budgetAmount, validFrom: rolloverDate }]
+          : asArray(s.budgets, "subcategory.budgets").map((b) => ({
+              amount: reqInt(b.amount, "budget.amount"),
+              validFrom: reqDate(b.validFrom, "budget.validFrom"),
+            }))
+      ).map((b) => ({ ...b, validFrom: toMonthStartUTC(b.validFrom) }));
+
+      if (budgets.length === 0) {
+        fail("a subcategory has no budget periods");
+      }
+
+      return {
+        id: reqId(s.id, "subcategory"),
+        categoryId: reqId(s.categoryId, "subcategory.categoryId"),
+        name: reqName(s.name, "subcategory"),
+        icon: typeof s.icon === "string" ? sanitizeString(s.icon, 50) : "",
+        budgetAmount,
+        rolloverDate,
+        budgets,
+        createdAt: s.createdAt
+          ? reqDate(s.createdAt, "subcategory.createdAt")
+          : undefined,
+      };
+    },
   );
 
   const expenses = asArray(data.expenses, "expenses").map((e) => ({
@@ -257,7 +288,6 @@ export async function importUserData(
             name: s.name,
             icon: s.icon,
             budgetAmount: s.budgetAmount,
-            rolloverDate: s.rolloverDate,
             ...(s.createdAt ? { createdAt: s.createdAt } : {}),
             category: { connect: { id: s.categoryId } },
           },
@@ -265,10 +295,29 @@ export async function importUserData(
             name: s.name,
             icon: s.icon,
             budgetAmount: s.budgetAmount,
-            rolloverDate: s.rolloverDate,
             categoryId: s.categoryId,
           },
         });
+
+        // Every period, so a schedule survives the round trip. Merging onto an
+        // existing subcategory replaces the amount for months the file knows
+        // about and leaves any others alone.
+        for (const budget of s.budgets) {
+          await tx.subcategoryBudget.upsert({
+            where: {
+              subcategoryId_validFrom: {
+                subcategoryId: s.id,
+                validFrom: budget.validFrom,
+              },
+            },
+            create: {
+              subcategoryId: s.id,
+              amount: budget.amount,
+              validFrom: budget.validFrom,
+            },
+            update: { amount: budget.amount },
+          });
+        }
       }
 
       for (const e of data.expenses) {
