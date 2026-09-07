@@ -22,29 +22,43 @@ export function parseMonthStartUTC(value: string): Date {
   return new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), 1));
 }
 
-const monthsBetween = (from: Date, to: Date): number =>
-  (to.getUTCFullYear() - from.getUTCFullYear()) * 12 +
-  (to.getUTCMonth() - from.getUTCMonth());
+const addMonthsUTC = (month: Date, count: number): Date =>
+  new Date(Date.UTC(month.getUTCFullYear(), month.getUTCMonth() + count, 1));
+
+/** Months in the half-open range: `until` is not counted. */
+const countMonths = (from: Date, until: Date): number =>
+  (until.getUTCFullYear() - from.getUTCFullYear()) * 12 +
+  (until.getUTCMonth() - from.getUTCMonth());
 
 export interface BudgetPeriod {
   amount: number;
   validFrom: Date;
 }
 
-/** Periods must be sorted by `validFrom` ascending. */
+/**
+ * The amount in force for a month, or null before the schedule opens.
+ *
+ * Periods must be sorted by `validFrom` ascending.
+ */
 export function amountForMonth(
   periods: BudgetPeriod[],
   month: Date,
 ): number | null {
-  const target = toMonthStartUTC(month);
-  let current: number | null = null;
+  const viewedMonth = toMonthStartUTC(month);
+  let amountInForce: number | null = null;
 
+  // Each period that has started overwrites the one before it, so whatever
+  // survives the walk is the one covering the viewed month.
   for (const period of periods) {
-    if (toMonthStartUTC(period.validFrom) > target) break;
-    current = period.amount;
+    const periodStarts = toMonthStartUTC(period.validFrom);
+    const hasStartedByNow = periodStarts <= viewedMonth;
+
+    if (!hasStartedByNow) break;
+
+    amountInForce = period.amount;
   }
 
-  return current;
+  return amountInForce;
 }
 
 /**
@@ -57,24 +71,35 @@ export function amountForMonth(
  * Months before the schedule opens accrue nothing.
  */
 export function accruedBudget(periods: BudgetPeriod[], month: Date): number {
-  const view = toMonthStartUTC(month);
+  const viewedMonth = toMonthStartUTC(month);
+  const monthAfterViewed = addMonthsUTC(viewedMonth, 1);
   let total = 0;
 
-  for (let i = 0; i < periods.length; i++) {
-    const start = toMonthStartUTC(periods[i].validFrom);
-    if (start > view) break;
+  for (let index = 0; index < periods.length; index++) {
+    const period = periods[index];
+    const periodStarts = toMonthStartUTC(period.validFrom);
+    const hasStartedByNow = periodStarts <= viewedMonth;
 
-    // A period runs until the next one opens, or to the end of the viewed month
-    // when it is the last one still in force.
-    const next = periods[i + 1]
-      ? toMonthStartUTC(periods[i + 1].validFrom)
+    // Sorted ascending, so nothing after this has started either.
+    if (!hasStartedByNow) break;
+
+    const nextPeriod = periods[index + 1];
+    const nextPeriodStarts = nextPeriod
+      ? toMonthStartUTC(nextPeriod.validFrom)
       : null;
-    const end =
-      next && next <= view
-        ? next
-        : new Date(Date.UTC(view.getUTCFullYear(), view.getUTCMonth() + 1, 1));
+    const isSupersededByNow =
+      nextPeriodStarts !== null && nextPeriodStarts <= viewedMonth;
 
-    total += monthsBetween(start, end) * periods[i].amount;
+    /*
+     * Exclusive on purpose. A superseded period stops *before* the month the
+     * next one takes over, so that month is counted once, at the new amount. A
+     * period still in force stops before the month after the one being viewed,
+     * which is how the viewed month itself gets counted.
+     */
+    const stopsBefore = isSupersededByNow ? nextPeriodStarts : monthAfterViewed;
+    const monthsAtThisAmount = countMonths(periodStarts, stopsBefore);
+
+    total += monthsAtThisAmount * period.amount;
   }
 
   return total;
