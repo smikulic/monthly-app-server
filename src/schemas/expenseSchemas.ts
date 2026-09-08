@@ -14,10 +14,20 @@ export const expenseTypeDefs = `
     total: Int!
   }
 
+  "One person's shared spend across the year, month by month."
+  type SharedUserSeries {
+    userId: ID!
+    name: String!
+    monthlyTotals: [Int!]!
+    total: Int!
+  }
+
   type ChartExpensesPayload {
     monthlyTotals: [Int!]!
     "Budget in force in each month of the year, so a mid-year change shows as a step."
     monthlyBudgets: [Int!]!
+    "Spend in shared categories only, one series per member. Empty when nothing is shared."
+    sharedMonthlyByUser: [SharedUserSeries!]!
     categoryExpenseTotals: [CategoryExpenseTotal!]!
   }
 

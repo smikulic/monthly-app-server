@@ -9,6 +9,7 @@ import {
 } from "../utils/scope.js";
 import { amountForMonth } from "../utils/budgetPeriods.js";
 import type { BudgetPeriod } from "../utils/budgetPeriods.js";
+import { buildDisplayNames } from "../utils/sharedSpend.js";
 import {
   sanitizeString,
   validatePositiveInteger,
@@ -83,6 +84,9 @@ export const expenseResolvers = {
           amount: true,
           date: true,
           subcategoryId: true,
+          // Who paid, for the shared-spend series below.
+          userId: true,
+          user: { select: { name: true, email: true } },
         },
       });
 
@@ -103,6 +107,10 @@ export const expenseResolvers = {
       const scheduled = await context.prisma.subcategory.findMany({
         where: { category: categoryWhere },
         select: {
+          id: true,
+          // groupId marks the category as shared, which is what the per-person
+          // series is scoped to.
+          category: { select: { groupId: true } },
           budgets: {
             orderBy: { validFrom: "asc" },
             select: { amount: true, validFrom: true },
@@ -121,6 +129,67 @@ export const expenseResolvers = {
           0,
         ),
       );
+
+      /*
+       * Shared spend across the year, one series per person. Scoped to
+       * categories with a group: personal spend has nobody to compare against,
+       * and mixing it in would make the lines mean two different things.
+       */
+      const sharedSubcategoryIds = new Set(
+        scheduled
+          .filter((s: { category: { groupId: string | null } }) =>
+            Boolean(s.category.groupId),
+          )
+          .map((s: { id: string }) => s.id),
+      );
+
+      const sharedExpenses = sharedSubcategoryIds.size
+        ? expensesResponse.filter((e) => sharedSubcategoryIds.has(e.subcategoryId))
+        : [];
+
+      const groupIds = [
+        ...new Set(
+          (
+            await context.prisma.category.findMany({
+              where: { AND: [categoryWhere, { groupId: { not: null } }] },
+              select: { groupId: true },
+            })
+          )
+            .map((c: { groupId: string | null }) => c.groupId)
+            .filter((id: string | null): id is string => !!id),
+        ),
+      ];
+
+      const members = groupIds.length
+        ? await context.prisma.groupMember.findMany({
+            where: { groupId: { in: groupIds } },
+            select: {
+              userId: true,
+              user: { select: { name: true, email: true } },
+            },
+          })
+        : [];
+
+      const sharedNames = buildDisplayNames(members, sharedExpenses);
+
+      // userId -> 12 months
+      const perUserMonths = new Map<string, number[]>(
+        [...sharedNames.keys()].map((userId) => [userId, new Array(12).fill(0)]),
+      );
+
+      for (const expense of sharedExpenses) {
+        const series = perUserMonths.get(expense.userId);
+        if (series) series[expense.date.getMonth()] += expense.amount;
+      }
+
+      const sharedMonthlyByUser = [...perUserMonths.entries()]
+        .map(([userId, months]) => ({
+          userId,
+          name: sharedNames.get(userId) || "Unknown",
+          monthlyTotals: months,
+          total: months.reduce((a, b) => a + b, 0),
+        }))
+        .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name));
 
       // do a prisma.groupBy to get sums per subcategory
       const grouped = await context.prisma.expense.groupBy({
@@ -149,7 +218,12 @@ export const expenseResolvers = {
         };
       });
 
-      return { monthlyTotals, monthlyBudgets, categoryExpenseTotals };
+      return {
+        monthlyTotals,
+        monthlyBudgets,
+        sharedMonthlyByUser,
+        categoryExpenseTotals,
+      };
     }),
   },
   Mutation: {
