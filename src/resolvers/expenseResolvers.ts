@@ -7,6 +7,8 @@ import {
   canAccessCategory,
   canManage,
 } from "../utils/scope.js";
+import { amountForMonth } from "../utils/budgetPeriods.js";
+import type { BudgetPeriod } from "../utils/budgetPeriods.js";
 import {
   sanitizeString,
   validatePositiveInteger,
@@ -92,6 +94,34 @@ export const expenseResolvers = {
         monthlyTotals[month] += expense.amount;
       });
 
+      /*
+       * The budget line, one value per month. It is a series rather than a
+       * single figure because the amount can change mid-year: drawing it flat
+       * at today's rate would re-cost January at December's budget, which is
+       * the bug the budget schedule exists to prevent.
+       */
+      const scheduled = await context.prisma.subcategory.findMany({
+        where: { category: categoryWhere },
+        select: {
+          budgets: {
+            orderBy: { validFrom: "asc" },
+            select: { amount: true, validFrom: true },
+          },
+        },
+      });
+
+      const monthlyBudgets = Array.from({ length: 12 }, (_, month) =>
+        scheduled.reduce(
+          (total: number, subcategory: { budgets: BudgetPeriod[] }) =>
+            total +
+            (amountForMonth(
+              subcategory.budgets,
+              new Date(Date.UTC(filterDateYear, month, 1)),
+            ) ?? 0),
+          0,
+        ),
+      );
+
       // do a prisma.groupBy to get sums per subcategory
       const grouped = await context.prisma.expense.groupBy({
         by: ["subcategoryId"],
@@ -119,7 +149,7 @@ export const expenseResolvers = {
         };
       });
 
-      return { monthlyTotals, categoryExpenseTotals };
+      return { monthlyTotals, monthlyBudgets, categoryExpenseTotals };
     }),
   },
   Mutation: {

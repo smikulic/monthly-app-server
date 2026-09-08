@@ -1,5 +1,7 @@
 import { secured } from "../utils/secured.js";
 import { categoryScopeWhere } from "../utils/scope.js";
+import { amountForMonth } from "../utils/budgetPeriods.js";
+import type { BudgetPeriod } from "../utils/budgetPeriods.js";
 
 const TOP_N = 5;
 const STREAK_LOOKBACK = 6; // months of history considered for an on-budget streak
@@ -13,6 +15,10 @@ function monthRange(year: number, month: number) {
 }
 
 const monthIndex = (d: Date) => d.getFullYear() * 12 + d.getMonth();
+
+/** A month index back to the UTC month start the budget schedule is keyed on. */
+const monthStartFromIndex = (index: number) =>
+  new Date(Date.UTC(Math.floor(index / 12), index % 12, 1));
 
 export const insightsResolvers = {
   Query: {
@@ -44,7 +50,14 @@ export const insightsResolvers = {
           name: true,
           groupId: true,
           subcategories: {
-            select: { id: true, name: true, budgetAmount: true },
+            select: {
+              id: true,
+              name: true,
+              budgets: {
+                orderBy: { validFrom: "asc" as const },
+                select: { amount: true, validFrom: true },
+              },
+            },
           },
         },
       });
@@ -54,7 +67,11 @@ export const insightsResolvers = {
         string,
         { categoryId: string; categoryName: string; subcategoryName: string }
       >();
+      // The schedule per subcategory, so any month can be costed at the amount
+      // that actually applied in it rather than at today's.
+      const subSchedule = new Map<string, BudgetPeriod[]>();
       const subBudget = new Map<string, number>();
+      const viewedMonthStart = monthStartFromIndex(vIndex);
       const catMeta = new Map<
         string,
         { name: string; groupId: string | null; budget: number }
@@ -68,8 +85,10 @@ export const insightsResolvers = {
             categoryName: c.name,
             subcategoryName: s.name,
           });
-          subBudget.set(s.id, s.budgetAmount || 0);
-          budget += s.budgetAmount || 0;
+          const inViewedMonth = amountForMonth(s.budgets, viewedMonthStart) ?? 0;
+          subSchedule.set(s.id, s.budgets);
+          subBudget.set(s.id, inViewedMonth);
+          budget += inViewedMonth;
         }
         catMeta.set(c.id, { name: c.name, groupId: c.groupId, budget });
       }
@@ -179,8 +198,9 @@ export const insightsResolvers = {
         });
 
       // On-budget streaks: consecutive months (ending this one) at or under
-      // budget, per subcategory. Budgets aren't versioned, so the current
-      // budget is applied to past months (a known approximation).
+      // budget, per subcategory. Each month is compared against the budget that
+      // applied in *that* month, so raising a budget cannot retroactively turn
+      // an over-budget month into an under-budget one.
       const streakStart = new Date(vYear, vMonth - (STREAK_LOOKBACK - 1), 1);
       const streakExpenses = await context.prisma.expense.findMany({
         where: {
@@ -204,12 +224,16 @@ export const insightsResolvers = {
 
       const streaks = [...subBudget.entries()]
         .filter(([, budget]) => budget > 0)
-        .map(([subcategoryId, budget]) => {
+        .map(([subcategoryId]) => {
           const months = subMonthSpend.get(subcategoryId);
+          const schedule = subSchedule.get(subcategoryId) ?? [];
           let monthsUnderBudget = 0;
           for (let i = 0; i < STREAK_LOOKBACK; i++) {
             const spent = months?.get(vIndex - i) || 0;
-            if (spent <= budget) monthsUnderBudget++;
+            const budgetThen =
+              amountForMonth(schedule, monthStartFromIndex(vIndex - i)) ?? 0;
+            // A month before the schedule opened has no budget to be under.
+            if (budgetThen > 0 && spent <= budgetThen) monthsUnderBudget++;
             else break;
           }
           const ref = subToCat.get(subcategoryId);
