@@ -16,6 +16,8 @@ export const expenseTypeDefs = `
 
   type ChartExpensesPayload {
     monthlyTotals: [Int!]!
+    "Budget in force in each month of the year, so a mid-year change shows as a step."
+    monthlyBudgets: [Int!]!
     categoryExpenseTotals: [CategoryExpenseTotal!]!
   }
 

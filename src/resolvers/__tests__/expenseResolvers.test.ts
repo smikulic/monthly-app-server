@@ -129,10 +129,18 @@ describe("expenseResolvers", () => {
         { id: "sub1", name: "Sub One", category: { name: "Cat A" } },
         { id: "sub2", name: "Sub Two", category: { name: "Cat B" } },
       ];
+      // One budget runs all year, the other only opens in June.
+      const schedules = [
+        { budgets: [{ amount: 100, validFrom: new Date(Date.UTC(2022, 0, 1)) }] },
+        { budgets: [{ amount: 50, validFrom: new Date(Date.UTC(2022, 5, 1)) }] },
+      ];
 
       prismaMock.expense.findMany.mockResolvedValue(expenseRecords);
       prismaMock.expense.groupBy.mockResolvedValue(groupByResult);
-      prismaMock.subcategory.findMany.mockResolvedValue(subcats);
+      // Two calls: the schedules for the budget line, then the names for the pie.
+      prismaMock.subcategory.findMany
+        .mockResolvedValueOnce(schedules)
+        .mockResolvedValueOnce(subcats);
 
       const result = await expenseResolvers.Query.chartExpenses(
         null,
@@ -143,6 +151,11 @@ describe("expenseResolvers", () => {
 
       expect(result.monthlyTotals).toEqual([
         150, 200, 300, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+      ]);
+      // Steps in June when the second budget opens, rather than being flat at
+      // whatever the total happens to be today.
+      expect(result.monthlyBudgets).toEqual([
+        100, 100, 100, 100, 100, 150, 150, 150, 150, 150, 150, 150,
       ]);
       expect(result.categoryExpenseTotals).toEqual([
         { categoryName: "Cat A", subcategoryName: "Sub One", total: 450 },
