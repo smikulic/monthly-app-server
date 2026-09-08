@@ -103,6 +103,8 @@ export const insightsResolvers = {
             date: true,
             description: true,
             subcategoryId: true,
+            // `userId` is who paid, and is what the shared split groups by.
+            userId: true,
             user: { select: { name: true, email: true } },
           },
         }),
@@ -248,6 +250,95 @@ export const insightsResolvers = {
         .sort((a, b) => b.monthsUnderBudget - a.monthsUnderBudget)
         .slice(0, TOP_N);
 
+      /*
+       * Who paid what, in shared categories only. Personal categories are
+       * excluded because there is nobody to compare against.
+       *
+       * Members who spent nothing are included at 0: in a two-person household
+       * "Ana 300" alone cannot be read as "and Ivan spent nothing" rather than
+       * "Ivan is missing from this list".
+       */
+      const sharedGroupIds = [
+        ...new Set(
+          [...catMeta.values()]
+            .map((m) => m.groupId)
+            .filter((id): id is string => !!id),
+        ),
+      ];
+
+      const members = sharedGroupIds.length
+        ? await context.prisma.groupMember.findMany({
+            where: { groupId: { in: sharedGroupIds } },
+            select: {
+              userId: true,
+              user: { select: { name: true, email: true } },
+            },
+          })
+        : [];
+
+      const displayName = new Map<string, string>();
+      for (const m of members) {
+        displayName.set(m.userId, m.user?.name || m.user?.email || "Unknown");
+      }
+
+      const isShared = (subcategoryId: string) => {
+        const ref = subToCat.get(subcategoryId);
+        return ref ? !!catMeta.get(ref.categoryId)?.groupId : false;
+      };
+
+      // subcategoryId -> userId -> spent, seeded so every member appears.
+      const sharedBySub = new Map<string, Map<string, number>>();
+      const sharedByUser = new Map<string, number>(
+        [...displayName.keys()].map((userId) => [userId, 0]),
+      );
+
+      for (const e of curExpenses) {
+        if (!isShared(e.subcategoryId)) continue;
+
+        // A payer who has since left the group still owns their past expenses.
+        if (!displayName.has(e.userId)) {
+          displayName.set(
+            e.userId,
+            e.user?.name || e.user?.email || "Former member",
+          );
+        }
+
+        let perUser = sharedBySub.get(e.subcategoryId);
+        if (!perUser) {
+          perUser = new Map([...displayName.keys()].map((id) => [id, 0]));
+          sharedBySub.set(e.subcategoryId, perUser);
+        }
+
+        perUser.set(e.userId, (perUser.get(e.userId) || 0) + e.amount);
+        sharedByUser.set(e.userId, (sharedByUser.get(e.userId) || 0) + e.amount);
+      }
+
+      const spenders = (totals: Map<string, number>) =>
+        [...totals.entries()]
+          .map(([userId, spent]) => ({
+            userId,
+            name: displayName.get(userId) || "Unknown",
+            spent,
+          }))
+          .sort((a, b) => b.spent - a.spent || a.name.localeCompare(b.name));
+
+      const sharedTotalsByUser = sharedGroupIds.length
+        ? spenders(sharedByUser)
+        : [];
+
+      const sharedSplits = [...sharedBySub.entries()]
+        .map(([subcategoryId, perUser]) => {
+          const ref = subToCat.get(subcategoryId);
+          return {
+            subcategoryId,
+            subcategoryName: ref?.subcategoryName || "Unknown",
+            categoryName: ref?.categoryName || "Unknown",
+            total: [...perUser.values()].reduce((a, b) => a + b, 0),
+            perUser: spenders(perUser),
+          };
+        })
+        .sort((a, b) => b.total - a.total);
+
       return {
         daysElapsed,
         daysInMonth,
@@ -266,6 +357,8 @@ export const insightsResolvers = {
         biggestMovers,
         topExpenses,
         streaks,
+        sharedTotalsByUser,
+        sharedSplits,
       };
     }),
   },
