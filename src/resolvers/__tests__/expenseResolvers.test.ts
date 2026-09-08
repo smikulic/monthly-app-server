@@ -32,8 +32,12 @@ describe("expenseResolvers", () => {
       findMany: jest.Mock;
       findUnique: jest.Mock;
     };
+    category: {
+      findMany: jest.Mock;
+    };
     groupMember: {
       findUnique: jest.Mock;
+      findMany: jest.Mock;
     };
     user: {
       findUnique: jest.Mock;
@@ -51,12 +55,16 @@ describe("expenseResolvers", () => {
         delete: jest.fn(),
         findUnique: jest.fn(),
       },
+      category: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
       subcategory: {
         findMany: jest.fn(),
         findUnique: jest.fn(),
       },
       groupMember: {
         findUnique: jest.fn(),
+        findMany: jest.fn().mockResolvedValue([]),
       },
       user: {
         findUnique: jest.fn(),
@@ -115,11 +123,38 @@ describe("expenseResolvers", () => {
   describe("Query.chartExpenses", () => {
     it("computes totals and scopes both queries by category access", async () => {
       const filterDate = "2022-03-10";
+      const ana = { name: "Ana", email: "ana@example.com" };
+      const ivan = { name: "Ivan", email: "ivan@example.com" };
       const expenseRecords = [
-        { amount: 100, date: new Date("2022-01-05"), subcategoryId: "sub1" },
-        { amount: 50, date: new Date("2022-01-20"), subcategoryId: "sub1" },
-        { amount: 200, date: new Date("2022-02-15"), subcategoryId: "sub2" },
-        { amount: 300, date: new Date("2022-03-01"), subcategoryId: "sub1" },
+        {
+          amount: 100,
+          date: new Date("2022-01-05"),
+          subcategoryId: "sub1",
+          userId: "ana",
+          user: ana,
+        },
+        {
+          amount: 50,
+          date: new Date("2022-01-20"),
+          subcategoryId: "sub1",
+          userId: "ivan",
+          user: ivan,
+        },
+        // Personal, so it stays out of the per-person series.
+        {
+          amount: 200,
+          date: new Date("2022-02-15"),
+          subcategoryId: "sub2",
+          userId: "ana",
+          user: ana,
+        },
+        {
+          amount: 300,
+          date: new Date("2022-03-01"),
+          subcategoryId: "sub1",
+          userId: "ana",
+          user: ana,
+        },
       ];
       const groupByResult = [
         { subcategoryId: "sub1", _sum: { amount: 450 } },
@@ -129,14 +164,30 @@ describe("expenseResolvers", () => {
         { id: "sub1", name: "Sub One", category: { name: "Cat A" } },
         { id: "sub2", name: "Sub Two", category: { name: "Cat B" } },
       ];
-      // One budget runs all year, the other only opens in June.
+      // One budget runs all year, the other only opens in June. sub1 is shared,
+      // sub2 is personal, so only sub1 feeds the per-person series.
       const schedules = [
-        { budgets: [{ amount: 100, validFrom: new Date(Date.UTC(2022, 0, 1)) }] },
-        { budgets: [{ amount: 50, validFrom: new Date(Date.UTC(2022, 5, 1)) }] },
+        {
+          id: "sub1",
+          category: { groupId: "household" },
+          budgets: [{ amount: 100, validFrom: new Date(Date.UTC(2022, 0, 1)) }],
+        },
+        {
+          id: "sub2",
+          category: { groupId: null },
+          budgets: [{ amount: 50, validFrom: new Date(Date.UTC(2022, 5, 1)) }],
+        },
       ];
 
       prismaMock.expense.findMany.mockResolvedValue(expenseRecords);
       prismaMock.expense.groupBy.mockResolvedValue(groupByResult);
+      prismaMock.category.findMany.mockResolvedValue([
+        { groupId: "household" },
+      ]);
+      prismaMock.groupMember.findMany.mockResolvedValue([
+        { userId: "ana", user: ana },
+        { userId: "ivan", user: ivan },
+      ]);
       // Two calls: the schedules for the budget line, then the names for the pie.
       prismaMock.subcategory.findMany
         .mockResolvedValueOnce(schedules)
@@ -157,6 +208,21 @@ describe("expenseResolvers", () => {
       expect(result.monthlyBudgets).toEqual([
         100, 100, 100, 100, 100, 150, 150, 150, 150, 150, 150, 150,
       ]);
+      // Only sub1 is shared, so the 200 spent in the personal sub2 is absent.
+      expect(result.sharedMonthlyByUser).toEqual([
+        {
+          userId: "ana",
+          name: "Ana",
+          monthlyTotals: [100, 0, 300, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+          total: 400,
+        },
+        {
+          userId: "ivan",
+          name: "Ivan",
+          monthlyTotals: [50, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+          total: 50,
+        },
+      ]);
       expect(result.categoryExpenseTotals).toEqual([
         { categoryName: "Cat A", subcategoryName: "Sub One", total: 450 },
         { categoryName: "Cat B", subcategoryName: "Sub Two", total: 200 },
@@ -171,7 +237,13 @@ describe("expenseResolvers", () => {
           subcategory: { category: allScopeCategoryWhere },
           date: { gte: startDate, lte: endDate },
         },
-        select: { amount: true, date: true, subcategoryId: true },
+        select: {
+          amount: true,
+          date: true,
+          subcategoryId: true,
+          userId: true,
+          user: { select: { name: true, email: true } },
+        },
       });
       expect(prismaMock.expense.groupBy).toHaveBeenCalledWith({
         by: ["subcategoryId"],

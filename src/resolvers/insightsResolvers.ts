@@ -2,6 +2,7 @@ import { secured } from "../utils/secured.js";
 import { categoryScopeWhere } from "../utils/scope.js";
 import { amountForMonth } from "../utils/budgetPeriods.js";
 import type { BudgetPeriod } from "../utils/budgetPeriods.js";
+import { buildDisplayNames, toSpenders } from "../utils/sharedSpend.js";
 
 const TOP_N = 5;
 const STREAK_LOOKBACK = 6; // months of history considered for an on-budget streak
@@ -276,15 +277,15 @@ export const insightsResolvers = {
           })
         : [];
 
-      const displayName = new Map<string, string>();
-      for (const m of members) {
-        displayName.set(m.userId, m.user?.name || m.user?.email || "Unknown");
-      }
-
       const isShared = (subcategoryId: string) => {
         const ref = subToCat.get(subcategoryId);
         return ref ? !!catMeta.get(ref.categoryId)?.groupId : false;
       };
+
+      const sharedExpenses = curExpenses.filter((e: { subcategoryId: string }) =>
+        isShared(e.subcategoryId),
+      );
+      const displayName = buildDisplayNames(members, sharedExpenses);
 
       // subcategoryId -> userId -> spent, seeded so every member appears.
       const sharedBySub = new Map<string, Map<string, number>>();
@@ -292,17 +293,7 @@ export const insightsResolvers = {
         [...displayName.keys()].map((userId) => [userId, 0]),
       );
 
-      for (const e of curExpenses) {
-        if (!isShared(e.subcategoryId)) continue;
-
-        // A payer who has since left the group still owns their past expenses.
-        if (!displayName.has(e.userId)) {
-          displayName.set(
-            e.userId,
-            e.user?.name || e.user?.email || "Former member",
-          );
-        }
-
+      for (const e of sharedExpenses) {
         let perUser = sharedBySub.get(e.subcategoryId);
         if (!perUser) {
           perUser = new Map([...displayName.keys()].map((id) => [id, 0]));
@@ -313,17 +304,8 @@ export const insightsResolvers = {
         sharedByUser.set(e.userId, (sharedByUser.get(e.userId) || 0) + e.amount);
       }
 
-      const spenders = (totals: Map<string, number>) =>
-        [...totals.entries()]
-          .map(([userId, spent]) => ({
-            userId,
-            name: displayName.get(userId) || "Unknown",
-            spent,
-          }))
-          .sort((a, b) => b.spent - a.spent || a.name.localeCompare(b.name));
-
       const sharedTotalsByUser = sharedGroupIds.length
-        ? spenders(sharedByUser)
+        ? toSpenders(sharedByUser, displayName)
         : [];
 
       const sharedSplits = [...sharedBySub.entries()]
@@ -334,7 +316,7 @@ export const insightsResolvers = {
             subcategoryName: ref?.subcategoryName || "Unknown",
             categoryName: ref?.categoryName || "Unknown",
             total: [...perUser.values()].reduce((a, b) => a + b, 0),
-            perUser: spenders(perUser),
+            perUser: toSpenders(perUser, displayName),
           };
         })
         .sort((a, b) => b.total - a.total);
