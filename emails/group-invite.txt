@@ -1,0 +1,14 @@
+{{invited_by}} wants to share a budget with you
+
+They've invited you to {{group_name}} on Monthly.
+
+Monthly is where a household keeps one budget instead of two. You both see the
+same categories and the same figures, every expense records who paid, and
+nobody has to keep a tally in their head.
+
+Join {{group_name}}:
+{{action_url}}
+
+You'll be asked to create an account first, if you don't have one. Not
+expecting this? Ignore it — nothing is shared until you accept. Questions go to
+support@yourmonthly.app.

@@ -57,7 +57,16 @@ async function processUser(prisma: PrismaClient, user: User) {
     weeklyBudget(prisma, user.id),
   ]);
 
-  const left = Math.max(budget - spend, 0);
+  /*
+   * Reported signed, not clamped.
+   *
+   * This was `Math.max(budget - spend, 0)`, so the one email that could tell
+   * someone they had overspent showed "0 left" instead and stopped there —
+   * the single most useful thing a weekly recap can say, withheld precisely
+   * when it mattered. The template colours the figure accordingly.
+   */
+  const remaining = budget - spend;
+  const overBudget = remaining < 0;
   const endForLabel =
     weekEndLocal.getTime() < zonedNow.getTime() ? weekEndLocal : zonedNow;
 
@@ -70,8 +79,12 @@ async function processUser(prisma: PrismaClient, user: User) {
   const model = {
     week_range: weekRange,
     total_spent: money(spend, user.currency),
-    budget_left: money(left, user.currency),
+    // Always the magnitude; "Over" versus "Left" carries the sign, and a
+    // minus in front of a currency symbol reads as an error rather than a
+    // figure.
+    budget_left: money(Math.abs(remaining), user.currency),
     total_budget_week: money(budget, user.currency),
+    over_budget: overBudget,
   };
 
   await sendWeeklyReminderEmail(user, model);
@@ -86,7 +99,10 @@ export async function sendAllWeeklyReminders(prisma: PrismaClient) {
   try {
     const users = await prisma.user.findMany({
       where: { emailConfirmed: true, weeklyReminder: true },
-      select: { id: true, email: true },
+      // `currency` was missing here while `processUser` read it, so it was
+      // always undefined and every recap fell back to euros — someone tracking
+      // in HUF or GBP got their week reported in a currency they do not use.
+      select: { id: true, email: true, currency: true },
       orderBy: { id: "asc" },
     });
 

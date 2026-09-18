@@ -14,6 +14,8 @@
     "build:tsc": "tsc -p tsconfig.build.json",
     "build": "prisma generate && prisma migrate deploy && tsc -p tsconfig.build.json && yarn seed:demo",
     "seed:demo": "node dist/demo/seedDemoDataset.js",
+    "emails:push": "tsx src/emails/pushTemplates.ts",
+    "emails:push:dry": "tsx src/emails/pushTemplates.ts --dry",
     "seed:demo:dev": "tsx src/demo/seedDemoDataset.ts",
     "dev": "tsx watch src/start.ts",
     "start": "node --import ./dist/instrument.js dist/start.js",

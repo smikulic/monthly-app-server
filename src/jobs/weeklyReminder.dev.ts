@@ -81,7 +81,9 @@ async function processUser(user: User) {
     weeklyBudget(user.id),
   ]);
 
-  const left = Math.max(budget - spend, 0);
+  // Signed, matching `weeklyReminder.core.ts` — this script exists to preview
+  // what production sends, so clamping here would hide the over-budget case.
+  const remaining = budget - spend;
   const endForLabel =
     weekEndLocal.getTime() < zoned.getTime() ? weekEndLocal : zoned;
   const weekRange = `${formatInTimeZone(
@@ -93,8 +95,9 @@ async function processUser(user: User) {
   const model = {
     week_range: weekRange,
     total_spent: money(spend, user.currency),
-    budget_left: money(left, user.currency),
+    budget_left: money(Math.abs(remaining), user.currency),
     total_budget_week: money(budget, user.currency),
+    over_budget: remaining < 0,
   };
 
   if (DRY_RUN) {

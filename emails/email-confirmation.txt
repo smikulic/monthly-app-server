@@ -1,0 +1,9 @@
+{{#name}}Welcome, {{name}}.{{/name}}{{^name}}Welcome to Monthly.{{/name}}
+
+Confirm your email address and your budget is ready to set up. The link below
+works for the next 24 hours.
+
+{{action_url}}
+
+Didn't sign up? Ignore this email and nothing happens — the address is never
+used again. Questions go to support@yourmonthly.app.

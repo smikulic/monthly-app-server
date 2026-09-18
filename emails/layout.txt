@@ -1,0 +1,5 @@
+{{{ @content }}}
+
+--
+Monthly — the budget your whole household shares
+https://yourmonthly.app

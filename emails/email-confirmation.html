@@ -1,0 +1,90 @@
+<!--
+  Confirm your email address.
+
+  The one thing this has to do is get the button pressed, so everything that
+  is not the button is kept short. The old copy opened with "Thanks for
+  creating your Monthly App account!" — a sentence that thanks the reader for
+  something they already know they did, before saying what to do.
+-->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr>
+    <td class="m-pad" style="padding: 40px 40px 0 40px;">
+      <h1
+        class="m-hero"
+        style="margin: 0 0 16px 0; font-family: Literata, Georgia, 'Times New Roman', serif; font-size: 26px; line-height: 34px; font-weight: 600; color: #14120f; letter-spacing: -0.01em;"
+      >
+        {{#name}}Welcome, {{name}}{{/name}}{{^name}}Welcome to Monthly{{/name}}
+      </h1>
+
+      <p
+        style="margin: 0 0 28px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 16px; line-height: 26px; color: #14120f;"
+      >
+        Confirm your email address and your budget is ready to set up. The link
+        below works for the next 24 hours.
+      </p>
+    </td>
+  </tr>
+
+  <!--
+    Bulletproof button. The padding is on the <a> so it survives Outlook, with
+    mso-padding-alt for the versions that ignore padding on an inline-block.
+  -->
+  <tr>
+    <td class="m-pad" align="left" style="padding: 0 40px 28px 40px;">
+      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td
+            align="center"
+            bgcolor="#2F5D50"
+            style="border-radius: 10px; background-color: #2f5d50;"
+          >
+            <a
+              href="{{action_url}}"
+              target="_blank"
+              style="display: inline-block; padding: 14px 28px; mso-padding-alt: 14px 28px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 600; line-height: 20px; color: #faf8f5; text-decoration: none; border-radius: 10px;"
+              >Confirm your email</a
+            >
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+
+  <tr>
+    <td class="m-pad" style="padding: 0 40px 32px 40px;">
+      <p
+        style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 15px; line-height: 24px; color: #6b665e;"
+      >
+        Didn&rsquo;t sign up? Ignore this email and nothing happens &mdash; the
+        address is never used again. Questions go to
+        <a href="{{support_url}}" style="color: #2f5d50; text-decoration: underline;"
+          >support@yourmonthly.app</a
+        >.
+      </p>
+    </td>
+  </tr>
+
+  <!--
+    The raw link, for the clients that mangle buttons. Quiet and small: it is a
+    fallback, and a signed token set at body size dominates the email it is
+    meant to be a footnote to.
+  -->
+  <tr>
+    <td class="m-pad" style="padding: 0 40px 32px 40px;">
+      <div style="border-top: 1px solid #e8e3db; padding-top: 20px;">
+        <p
+          style="margin: 0 0 8px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; line-height: 20px; color: #6b665e;"
+        >
+          If the button doesn&rsquo;t work, paste this into your browser:
+        </p>
+        <p
+          style="margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 12px; line-height: 18px; color: #6b665e; word-break: break-all; overflow-wrap: break-word;"
+        >
+          <a href="{{action_url}}" style="color: #6b665e; text-decoration: underline;"
+            >{{action_url}}</a
+          >
+        </p>
+      </div>
+    </td>
+  </tr>
+</table>
