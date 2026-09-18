@@ -9,6 +9,8 @@ export const userTypeDefs = `
     provider: String
     name: String
     picture: String
+    "Set once the first-run tour has been completed or dismissed."
+    onboardingSeenAt: String
     categories: [Category]
     expenses: [Expense]
   }
