@@ -1,0 +1,11 @@
+Your week
+{{week_range}}
+
+Spent: {{total_spent}}
+{{#over_budget}}Over budget by {{budget_left}}, of {{total_budget_week}}{{/over_budget}}{{^over_budget}}Left: {{budget_left}} of {{total_budget_week}}{{/over_budget}}
+
+Add this week's expenses:
+{{action_url}}
+
+This arrives every Saturday. Turn it off in Settings:
+{{settings_url}}

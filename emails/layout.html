@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <!--
+      Stops Gmail and Apple Mail auto-inverting the palette. The design is warm
+      and deliberately low-contrast; machine-inverted it becomes a muddy
+      near-black that matches nothing in the app.
+    -->
+    <meta name="color-scheme" content="light" />
+    <meta name="supported-color-schemes" content="light" />
+    <title>{{ subject }}</title>
+    <!--
+      Progressive enhancement only. Every colour, size and space that matters is
+      also set inline in the templates, because Gmail drops <style> on some
+      clients and Outlook ignores most of what it keeps. Nothing here is load
+      bearing, and none of it depends on Postmark's CSS inliner being on.
+    -->
+    <style>
+      @media only screen and (max-width: 620px) {
+        .m-card {
+          border-radius: 0 !important;
+          border-left: 0 !important;
+          border-right: 0 !important;
+        }
+        .m-pad {
+          padding-left: 24px !important;
+          padding-right: 24px !important;
+        }
+        .m-hero {
+          font-size: 22px !important;
+          line-height: 30px !important;
+        }
+        /* The weekly figures sit side by side on a desktop and stack on a
+           phone, where two of them squeezed into 160px wrap mid-number. */
+        .m-stack {
+          display: block !important;
+          width: 100% !important;
+          padding: 0 0 12px 0 !important;
+        }
+        .m-gutter {
+          display: none !important;
+        }
+      }
+    </style>
+  </head>
+  <body
+    style="margin: 0; padding: 0; background-color: #faf8f5; -webkit-font-smoothing: antialiased;"
+  >
+    <!--
+      The grey line the inbox prints after the subject. Left empty it fills with
+      whatever text comes first, which is the wordmark repeated back at you.
+    -->
+    <div
+      style="display: none; font-size: 1px; color: #faf8f5; line-height: 1px; max-height: 0; max-width: 0; opacity: 0; overflow: hidden;"
+    >
+      {{ preheader }}&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;&nbsp;&zwnj;
+    </div>
+
+    <table
+      role="presentation"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      border="0"
+      style="background-color: #faf8f5;"
+    >
+      <tr>
+        <td align="center" style="padding: 32px 12px;">
+          <table
+            role="presentation"
+            width="600"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            style="width: 600px; max-width: 600px;"
+          >
+            <!-- Wordmark, left-aligned and serif, as in the app. The old
+                 centred grey "Monthly App" read as a system notice. -->
+            <tr>
+              <td align="left" style="padding: 0 8px 20px 8px;">
+                <a
+                  href="https://yourmonthly.app"
+                  style="font-family: Literata, Georgia, 'Times New Roman', serif; font-size: 20px; font-weight: 600; color: #14120f; text-decoration: none; letter-spacing: -0.01em;"
+                  >Monthly</a
+                >
+              </td>
+            </tr>
+
+            <tr>
+              <td
+                class="m-card"
+                style="background-color: #ffffff; border: 1px solid #e8e3db; border-radius: 16px;"
+              >
+                {{{ @content }}}
+              </td>
+            </tr>
+
+            <tr>
+              <td
+                class="m-pad"
+                style="padding: 20px 8px 0 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 13px; line-height: 20px; color: #6b665e;"
+              >
+                Sent by Monthly, the budget your whole household shares.<br />
+                <a
+                  href="https://yourmonthly.app"
+                  style="color: #6b665e; text-decoration: underline;"
+                  >yourmonthly.app</a
+                >
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

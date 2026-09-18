@@ -32,10 +32,12 @@ three on *Digital Ocean*:
 - Monthly-app-client
 
 one on *Postmark*:
-- Monthly App - Production - templates managed within [their template editor](https://account.postmarkapp.com/servers/11744691/templates)
-  - reset password email
-  - Signup email confirmation
-  - Weekly reminder
+- Monthly App - Production - [template editor](https://account.postmarkapp.com/servers/11744691/templates)
+  - **The bodies live in this repo now**, under `emails/`, and are pushed up with
+    `yarn emails:push`. Edit them here, not in the dashboard — see
+    [Transactional emails](#transactional-emails).
+  - One layout (`monthly-layout`) plus four templates: `email-confirmation`,
+    `password-reset`, `group-invite`, `weekly-reminder`.
 
 and one on *Google Cloud* for running Google OAuth login flow
 - https://console.cloud.google.com/welcome?project=monthly-app-473211
@@ -51,6 +53,43 @@ and one on *Google Cloud* for running Google OAuth login flow
 - We use Postgres DB with Prisma ORM (migrations and DB management)
 
 To seed `demo` user you can run `npx prisma db seed`
+
+### First-run demo dataset
+
+The sample household the onboarding tour runs on is one `DemoDataset` row, built
+by `src/demo/demoDataset.ts` and written by `yarn seed:demo` — which `yarn build`
+runs, so every deploy republishes it. It is never copied into anyone's tables:
+the client caches it in localStorage, answers its own queries from it, and drops
+it when the demo ends.
+
+Dates are month offsets, resolved in the browser, so the demo never goes stale.
+Edit the builder, bump `DEMO_DATASET_VERSION`, deploy.
+
+## Transactional emails
+
+Bodies live in `emails/`; subjects and aliases in `src/emails/templates.ts`.
+Postmark delivers them, it does not own them — **edit here, not in the
+dashboard.** One layout (`layout.html`, the wordmark/card/footer shell) plus
+four fragments rendered into it at `{{{ @content }}}`: `email-confirmation`,
+`password-reset`, `group-invite`, `weekly-reminder`. Each has a `.txt`
+alongside, which spam filters expect and some clients only ever show.
+
+```bash
+yarn emails:push:dry    # what would change, sends nothing
+yarn emails:push        # create or update the layout and all four
+```
+
+Preview in Postmark before the next send — that is the only way to see what
+Outlook did to it, and why this is not part of `yarn build`. The script is
+idempotent, so it also sets up a fresh Postmark server.
+
+Writing for email: tables for layout, styles inline (Gmail drops `<style>`, so
+the block in `layout.html` is media queries only). Set `preheader` or the inbox
+fills it with the wordmark. Colours come from the client's tokens
+(`apps/web/src/theme/tokens.ts`) and follow the same rule — spending is neutral
+ink, red means over budget and nothing else.
+
+`yarn cron:one:dry` renders the weekly recap for one user without sending.
 
 ## Local development
 
