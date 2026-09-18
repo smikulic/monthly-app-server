@@ -12,7 +12,9 @@
   "scripts": {
     "prisma-studio": "npx prisma studio",
     "build:tsc": "tsc -p tsconfig.build.json",
-    "build": "prisma generate && prisma migrate deploy && tsc -p tsconfig.build.json",
+    "build": "prisma generate && prisma migrate deploy && tsc -p tsconfig.build.json && yarn seed:demo",
+    "seed:demo": "node dist/demo/seedDemoDataset.js",
+    "seed:demo:dev": "tsx src/demo/seedDemoDataset.ts",
     "dev": "tsx watch src/start.ts",
     "start": "node --import ./dist/instrument.js dist/start.js",
     "test": "jest",

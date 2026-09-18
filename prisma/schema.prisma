@@ -16,6 +16,9 @@ model User {
   emailConfirmed Boolean    @default(false)
   currency       String?
   weeklyReminder Boolean    @default(false)
+  /// When the first-run tour was last completed or dismissed. Server-side
+  /// rather than localStorage so it does not replay on every new device.
+  onboardingSeenAt DateTime?
 
   // OAuth fields
   googleId       String?    @unique // Google's unique user ID
@@ -30,6 +33,22 @@ model User {
 
   groupMemberships GroupMember[]
   groupInvitesSent GroupInvite[] @relation("InvitesSent")
+}
+
+/// The canonical dataset the first-run demo runs on, held as one row so it can
+/// be rewritten without a deploy.
+///
+/// It is never copied into a user's tables: the client caches it in
+/// localStorage, answers its own queries from it, and throws it away when the
+/// demo ends. Nothing here belongs to anybody.
+model DemoDataset {
+  id        String   @id @default(uuid())
+  /// One row per named dataset. "default" is the one the tour asks for.
+  key       String   @unique
+  /// Bumped whenever the payload changes, so a stale client cache is detectable.
+  version   Int      @default(1)
+  payload   Json
+  updatedAt DateTime @updatedAt
 }
 
 model Category {

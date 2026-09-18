@@ -12,6 +12,7 @@ import { savingGoalTypeDefs } from "./schemas/savingGoalSchemas.js";
 import { investmentTypeDefs } from "./schemas/investmentSchemas.js";
 import { groupTypeDefs } from "./schemas/groupSchemas.js";
 import { insightsTypeDefs } from "./schemas/insightsSchemas.js";
+import { onboardingTypeDefs } from "./schemas/onboardingSchemas.js";
 import { userResolvers } from "./resolvers/userResolvers.js";
 import { expenseResolvers } from "./resolvers/expenseResolvers.js";
 import { categoryResolvers } from "./resolvers/categoryResolvers.js";
@@ -20,6 +21,7 @@ import { savingGoalResolvers } from "./resolvers/savingGoalResolvers.js";
 import { investmentResolvers } from "./resolvers/investmentResolvers.js";
 import { groupResolvers } from "./resolvers/groupResolvers.js";
 import { insightsResolvers } from "./resolvers/insightsResolvers.js";
+import { onboardingResolvers } from "./resolvers/onboardingResolvers.js";
 
 import { prisma } from "./context.js";
 import { tryLock, unlock } from "./utils/advisoryLock.js";
@@ -61,6 +63,7 @@ const server = new ApolloServer({
     investmentResolvers,
     groupResolvers,
     insightsResolvers,
+    onboardingResolvers,
   ),
   typeDefs: [
     Query,
@@ -72,6 +75,7 @@ const server = new ApolloServer({
     investmentTypeDefs,
     groupTypeDefs,
     insightsTypeDefs,
+    onboardingTypeDefs,
   ],
   // Disable CSRF prevention to fix frontend refresh issues
   // Alternative security: JWT tokens + proper CORS + input validation already implemented
