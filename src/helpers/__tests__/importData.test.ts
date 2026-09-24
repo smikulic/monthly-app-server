@@ -1,4 +1,4 @@
-import { parseImportPayload } from "../importData";
+import { parseImportPayload, takeOwnRowsOnly } from "../importData";
 
 const validPayload = () => ({
   version: 1,
@@ -99,5 +99,50 @@ describe("parseImportPayload", () => {
     expect(() => parseImportPayload(JSON.stringify(bad))).toThrowError(
       /Import failed/,
     );
+  });
+});
+
+/*
+ * A v3 export describes the whole household, so re-importing it must not pull
+ * a partner's data into this account — nor be rejected outright by the
+ * foreign-id guard, which is what would happen without this filter.
+ */
+describe("takeOwnRowsOnly", () => {
+  const household = () =>
+    parseImportPayload(
+      JSON.stringify({
+        ...validPayload(),
+        version: 3,
+        exportedForUserId: "me",
+        categories: [
+          { id: "c1", name: "Food", icon: "", ownerUserId: "me" },
+          { id: "c2", name: "Her car", icon: "", ownerUserId: "partner" },
+        ],
+        subcategories: [
+          { id: "s1", categoryId: "c1", name: "Groceries", icon: "", budgetAmount: 100, rolloverDate: "2026-01-01T00:00:00.000Z" },
+          { id: "s2", categoryId: "c2", name: "Fuel", icon: "", budgetAmount: 80, rolloverDate: "2026-01-01T00:00:00.000Z" },
+        ],
+        expenses: [
+          { id: "e1", subcategoryId: "s1", amount: 42, date: "2026-01-03T00:00:00.000Z", paidByUserId: "me" },
+          { id: "e2", subcategoryId: "s1", amount: 30, date: "2026-01-04T00:00:00.000Z", paidByUserId: "partner" },
+          { id: "e3", subcategoryId: "s2", amount: 50, date: "2026-01-05T00:00:00.000Z", paidByUserId: "partner" },
+        ],
+      }),
+    );
+
+  it("keeps only what this user owns, and cascades to what hung off the rest", () => {
+    const result = takeOwnRowsOnly(household(), "me");
+
+    expect(result.categories.map((c) => c.id)).toEqual(["c1"]);
+    // s2 goes with the category it belonged to.
+    expect(result.subcategories.map((s) => s.id)).toEqual(["s1"]);
+    // e2 sits in a kept category but the partner paid it; e3's category is gone.
+    expect(result.expenses.map((e) => e.id)).toEqual(["e1"]);
+  });
+
+  it("leaves a v1 file alone, which never carried ownership at all", () => {
+    const v1 = parseImportPayload(JSON.stringify(validPayload()));
+
+    expect(takeOwnRowsOnly(v1, "anyone").expenses).toHaveLength(1);
   });
 });

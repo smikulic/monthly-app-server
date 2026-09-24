@@ -53,8 +53,14 @@ export const userResolvers = {
       return generateExpensesCsv(prisma, currentUser.id, year);
     }),
     generateDataExport: secured(async (_parent: unknown, _args, context) => {
-      const { prisma, currentUser } = context;
-      return generateFullExportJson(prisma, currentUser.id);
+      const { prisma, currentUser, groups } = context;
+      // Group memberships scope the export the same way they scope every other
+      // read, so a shared household exports as a household.
+      return generateFullExportJson(
+        prisma,
+        currentUser.id,
+        groups.map((g: { groupId: string }) => g.groupId),
+      );
     }),
     googleAuthUrl: () => {
       return {
