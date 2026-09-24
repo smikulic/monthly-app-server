@@ -10,7 +10,7 @@ export type ImportMode = "MERGE" | "REPLACE";
 // v2 carries each subcategory's full budget schedule. v1 files only knew a
 // single amount, so they import as one period and keep working.
 const EXPORT_VERSION = 2;
-const SUPPORTED_IMPORT_VERSIONS = [1, 2];
+const SUPPORTED_IMPORT_VERSIONS = [1, 2, 3];
 
 export type ImportResult = {
   categories: number;
@@ -72,6 +72,8 @@ export function parseImportPayload(payload: string) {
     createdAt: c.createdAt
       ? reqDate(c.createdAt, "category.createdAt")
       : undefined,
+    // v3 only. Absent on older files, which carried the owner's rows alone.
+    ownerUserId: typeof c.ownerUserId === "string" ? c.ownerUserId : undefined,
   }));
 
   const subcategories = asArray(data.subcategories, "subcategories").map(
@@ -123,6 +125,10 @@ export function parseImportPayload(payload: string) {
     createdAt: e.createdAt
       ? reqDate(e.createdAt, "expense.createdAt")
       : undefined,
+    // v3 only. Who paid, which is how a household export is filtered back down
+    // to the importer's own rows.
+    paidByUserId:
+      typeof e.paidByUserId === "string" ? e.paidByUserId : undefined,
   }));
 
   const savingGoals = asArray(data.savingGoals, "savingGoals").map((g) => ({
@@ -241,13 +247,51 @@ async function assertNoForeignIds(
   await Promise.all(checks);
 }
 
+/**
+ * Narrows a household export back down to the importer's own rows.
+ *
+ * A v3 file describes everything the exporter could see, which in a shared
+ * household includes categories their partner created and expenses their
+ * partner paid. Importing those as-is would either duplicate someone else's
+ * data into this account or — since `assertNoForeignIds` refuses to touch rows
+ * owned by another user — reject the whole file. Neither is what "restore my
+ * backup" should do.
+ *
+ * So ownership decides: keep what this user owns, drop the rest, and drop the
+ * subcategories and expenses that hang off a dropped category. Files from v1
+ * and v2 carry no ownership fields because they only ever held the owner's own
+ * rows, and pass through untouched.
+ */
+export function takeOwnRowsOnly(
+  data: ReturnType<typeof parseImportPayload>,
+  userId: string,
+) {
+  const categories = data.categories.filter(
+    (c) => c.ownerUserId === undefined || c.ownerUserId === userId,
+  );
+
+  const keptCategoryIds = new Set(categories.map((c) => c.id));
+  const subcategories = data.subcategories.filter((s) =>
+    keptCategoryIds.has(s.categoryId),
+  );
+
+  const keptSubcategoryIds = new Set(subcategories.map((s) => s.id));
+  const expenses = data.expenses.filter(
+    (e) =>
+      keptSubcategoryIds.has(e.subcategoryId) &&
+      (e.paidByUserId === undefined || e.paidByUserId === userId),
+  );
+
+  return { ...data, categories, subcategories, expenses };
+}
+
 export async function importUserData(
   prisma: PrismaClient,
   userId: string,
   payload: string,
   mode: ImportMode,
 ): Promise<ImportResult> {
-  const data = parseImportPayload(payload);
+  const data = takeOwnRowsOnly(parseImportPayload(payload), userId);
 
   await prisma.$transaction(
     async (tx) => {

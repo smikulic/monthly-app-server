@@ -194,10 +194,35 @@ export async function generateExpensesCsv(
 // Helper: Full, lossless export of all of a user's data as JSON, base64-encoded.
 // `version` is stamped so re-import can stay safe as the model evolves. Password and
 // googleId are deliberately omitted.
+/**
+ * Everything the caller can see, not merely everything they own.
+ *
+ * Until v3 this filtered on `userId` alone, which in a shared household was
+ * quietly wrong in both directions: a partner's expenses inside a shared
+ * category were missing, and categories the partner created were absent
+ * entirely — along with their budgets. Since the budgets that *were* exported
+ * belong to the whole household, every shared category appeared comfortably
+ * under budget. An export that silently answers a different question than the
+ * one asked is worse than one that refuses.
+ *
+ * Rows now carry `ownerUserId` / `paidByUserId` and categories carry `groupId`,
+ * so the file says who spent what and what was shared. `importUserData` uses
+ * those to take only the caller's own rows back in — without them a re-import
+ * would either duplicate a partner's data or be rejected wholesale by the
+ * foreign-id guard.
+ */
 export async function generateFullExportJson(
   prisma: PrismaClient,
   userId: string,
+  /** The caller's group memberships, from `context.groups`. */
+  groupIds: string[] = [],
 ): Promise<string> {
+  // The same rule the app scopes every other read by: personal categories plus
+  // anything shared with a group the caller belongs to.
+  const categoryScope = {
+    OR: [{ userId, groupId: null }, { groupId: { in: groupIds } }],
+  };
+
   const [
     profile,
     categories,
@@ -221,12 +246,20 @@ export async function generateFullExportJson(
       },
     }),
     prisma.category.findMany({
-      where: { userId },
+      where: categoryScope,
       orderBy: { createdAt: "asc" },
-      select: { id: true, name: true, icon: true, createdAt: true },
+      select: {
+        id: true,
+        name: true,
+        icon: true,
+        createdAt: true,
+        // Who created it, and whether it is shared. Import reads both.
+        userId: true,
+        groupId: true,
+      },
     }),
     prisma.subcategory.findMany({
-      where: { category: { userId } },
+      where: { category: categoryScope },
       orderBy: { createdAt: "asc" },
       select: {
         id: true,
@@ -245,7 +278,9 @@ export async function generateFullExportJson(
       },
     }),
     prisma.expense.findMany({
-      where: { userId },
+      // Every expense in a visible category, whoever paid — which is the whole
+      // point of a household budget and was exactly what was missing.
+      where: { subcategory: { category: categoryScope } },
       orderBy: { date: "asc" },
       select: {
         id: true,
@@ -254,6 +289,7 @@ export async function generateFullExportJson(
         description: true,
         date: true,
         createdAt: true,
+        userId: true,
       },
     }),
     prisma.savingGoal.findMany({
@@ -285,20 +321,38 @@ export async function generateFullExportJson(
   ]);
 
   const payload = {
-    // v2 adds `budgets` per subcategory. `budgetAmount` and `rolloverDate` stay
-    // so a v2 file is still readable by anything expecting v1's shape.
-    version: 2,
+    /*
+     * v3 widens the file from "what I own" to "what I can see", and adds the
+     * ownership fields that make that safe to import: `ownerUserId` and
+     * `groupId` on categories, `paidByUserId` on expenses.
+     *
+     * v2 added `budgets` per subcategory; `budgetAmount` and `rolloverDate`
+     * remain so a v3 file is still readable by anything expecting v1's shape.
+     */
+    version: 3,
     exportedAt: new Date().toISOString(),
+    /** Whose view this is. Import takes back only the rows this user owns. */
+    exportedForUserId: userId,
     profile,
-    categories,
+    categories: categories.map(({ userId: ownerUserId, ...category }) => ({
+      ...category,
+      ownerUserId,
+    })),
     // Flattened back to the v1 shape: the schedule's opening month is what the
     // format has always called `rolloverDate`.
     subcategories: subcategories.map(({ budgets, ...subcategory }) => ({
       ...subcategory,
       rolloverDate: budgets[0]?.validFrom ?? subcategory.createdAt,
     })),
-    expenses,
+    expenses: expenses.map(({ userId: paidByUserId, ...expense }) => ({
+      ...expense,
+      paidByUserId,
+    })),
     savingGoals,
+    // Kept. The dashboard row is hidden behind `SHOW_INVESTMENTS`, but the
+    // page, the API and the data are all live — so omitting them would mean
+    // holding data the owner cannot get out, which is the one thing an export
+    // exists to prevent.
     investments,
   };
 
